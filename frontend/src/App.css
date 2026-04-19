@@ -1,0 +1,188 @@
+/* Quant Terminal theme */
+:root {
+  --qt-bg: #07090E;
+  --qt-panel: #0D1117;
+  --qt-border: #1C2A38;
+  --qt-green: #00E676;
+  --qt-red: #FF3D5A;
+  --qt-amber: #FFB300;
+  --qt-blue: #4D9FFF;
+  --qt-purple: #BB86FC;
+  --qt-orange: #FF7043;
+  --qt-text: #C9D1D9;
+  --qt-bright: #E6EDF3;
+  --qt-muted: #4A5568;
+  --qt-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --qt-sans: 'Inter', system-ui, sans-serif;
+}
+
+html, body, #root {
+  background: var(--qt-bg);
+  color: var(--qt-text);
+  font-family: var(--qt-sans);
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.mono { font-family: var(--qt-mono); }
+.sans { font-family: var(--qt-sans); }
+
+.qt-panel {
+  background: var(--qt-panel);
+  border: 1px solid var(--qt-border);
+  border-radius: 8px;
+}
+
+.qt-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+.qt-scroll::-webkit-scrollbar-track { background: var(--qt-panel); }
+.qt-scroll::-webkit-scrollbar-thumb { background: var(--qt-border); border-radius: 4px; }
+.qt-scroll::-webkit-scrollbar-thumb:hover { background: #2a3f54; }
+
+.qt-input {
+  background: #07090E;
+  border: 1px solid var(--qt-border);
+  color: var(--qt-bright);
+  font-family: var(--qt-mono);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+.qt-input:focus {
+  outline: none;
+  border-color: var(--qt-blue);
+}
+.qt-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.qt-select {
+  background: #07090E;
+  border: 1px solid var(--qt-border);
+  color: var(--qt-bright);
+  font-family: var(--qt-mono);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  width: 100%;
+  cursor: pointer;
+}
+.qt-select:focus { outline: none; border-color: var(--qt-blue); }
+
+.qt-btn {
+  background: linear-gradient(180deg, #00E676 0%, #00B359 100%);
+  color: #07090E;
+  font-family: var(--qt-mono);
+  font-weight: 700;
+  padding: 14px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: transform 0.1s, box-shadow 0.15s, opacity 0.15s;
+  width: 100%;
+  font-size: 14px;
+}
+.qt-btn:hover:not(:disabled) {
+  box-shadow: 0 0 24px rgba(0, 230, 118, 0.35);
+  transform: translateY(-1px);
+}
+.qt-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #1C2A38;
+  color: var(--qt-muted);
+}
+
+.qt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.qt-card-click {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+.qt-card-click:hover {
+  border-color: #2a3f54;
+  transform: translateY(-1px);
+}
+.qt-card-selected {
+  border-color: var(--qt-green) !important;
+  box-shadow: 0 0 0 1px var(--qt-green), 0 0 18px rgba(0, 230, 118, 0.2);
+}
+
+.qt-toggle {
+  width: 36px;
+  height: 20px;
+  background: var(--qt-border);
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.qt-toggle.on { background: var(--qt-green); }
+.qt-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #E6EDF3;
+  border-radius: 50%;
+  transition: transform 0.15s;
+}
+.qt-toggle.on::after { transform: translateX(16px); background: #07090E; }
+
+.qt-divider {
+  height: 1px;
+  background: var(--qt-border);
+  margin: 14px 0;
+}
+
+.qt-label {
+  font-size: 11px;
+  color: var(--qt-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 600;
+}
+
+.qt-kpi-val {
+  font-family: var(--qt-mono);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@keyframes qt-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.qt-spin { display: inline-block; animation: qt-spin 0.9s linear infinite; }
+
+@keyframes qt-fadein {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.qt-fadein { animation: qt-fadein 0.25s ease-out both; }
+
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }

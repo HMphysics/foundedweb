@@ -1,0 +1,52 @@
+{
+  "summary": "Comprehensive frontend testing of PROP_MC Monte Carlo Simulator completed. All 19 test cases passed. App is fully functional with no critical issues.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_1.json"],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (client-side only)", "frontend": "100%"},
+  "test_credentials": "N/A - no authentication required",
+  "seed_data_creation": "N/A - client-side simulation only",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All features tested and working. App is a pure client-side Monte Carlo simulator with no backend. 22 firms with ~74 plans in firmDatabase.js. All data-testid attributes are properly implemented.",
+  "test_results": {
+    "passed": [
+      "App loads without errors at root URL, header 'PROP_MC Monte Carlo Simulator' visible",
+      "Firm grid shows 22 firms (23 cards including Custom)",
+      "Market filter pills (ALL/FUTURES/FOREX/CUSTOM) filter correctly",
+      "Selecting a firm card highlights it (green border) and reveals Step 2 plan grid",
+      "Selecting a plan reveals Step 3 strategy panel + results placeholder",
+      "Plan summary banner shows Capital, Target, DD, Fee, Split",
+      "Strategy defaults correct: WR=0.37, μ ganancia=438, σ ganancia=242, μ pérdida=-194, σ pérdida=28, P(spike)=0.0315, Mult spike=1.18",
+      "Clicking 'EJECUTAR SIMULACIÓN' shows loading state, then renders results-dashboard within ~3s",
+      "Results render 8 KPI cards, 3 chart panels, and stats row",
+      "Apex 50K Intraday sanity check: P(PASS)=23.05%, EV=+$427, P(Timeout)=66.83% (expected due to 30-day max)",
+      "FTMO 2-phase challenge: P(PASS)=2.44% (lower than single-phase), Phase 2 target=$2,500, 2-phase warning banner visible",
+      "Custom firm: All fields unlocked by default, capital/target editable, simulation runs correctly",
+      "MODIFIED badge appears when preset plan field is changed, disappears after reset",
+      "Apex warning '⏰ Cuenta Apex: 30 días' visible",
+      "Topstep warning 'ℹ️ Topstep no impone DLL' visible",
+      "Monthly-fee firms (Topstep, TPT, TradeDay, Leeloo, E2T) show '⚠️ Fee mensual' warning",
+      "2-phase firms show '🔄 Challenge de 2 fases' warning",
+      "Consistency vs_total warning visible for MFFU Core",
+      "DLL toggle shows DLL value field and DLL fatal toggle when ON",
+      "Consistency toggle shows type selector (vs_total/vs_target) when ON",
+      "Phases select reveals Phase 2 block with target/minDays/maxDays when set to 2",
+      "N simulations slider works (1000 sims: ~0.6s, 25000 sims: ~0.6s)",
+      "Reset-to-preset button restores original values",
+      "No dark-on-dark invisible text - all text readable against dark backgrounds",
+      "No console errors during full flow"
+    ],
+    "failed": []
+  }
+}
