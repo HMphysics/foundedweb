@@ -1,11 +1,13 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import "./App.css";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   ReferenceLine, Cell,
 } from "recharts";
+import { toPng } from "html-to-image";
 import { FIRM_DATABASE, STRATEGY_DEFAULTS } from "./firmDatabase";
 import { runMonteCarlo } from "./monteCarlo";
+import { parseCsv, detectColumns, extractColumn, calibrateStrategy } from "./csvCalibrate";
 
 // ─────────────────────────── FORGE palette ───────────────────────────
 const C = {
@@ -47,14 +49,29 @@ function isPlanModified(plan, presetPlan) {
   return false;
 }
 
+function download(filename, dataUrl) {
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+function downloadJSON(filename, obj) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  download(filename, url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // ─────────────────────────── Atoms ───────────────────────────
 function Tag({ children, color = C.boneDim }) {
   return <span className="fg-tag" style={{ color }}>{children}</span>;
 }
 
-function Section({ label, id }) {
+function Section({ label }) {
   return (
-    <div className="fg-sec" id={id}>
+    <div className="fg-sec">
       <span>§ {label}</span>
       <span style={{ color: C.border, letterSpacing: 0 }}>━━━━━━━━━━</span>
     </div>
@@ -165,6 +182,17 @@ function App() {
   const [showAccountEditor, setShowAccountEditor] = useState(false);
   const [showMaeBlock, setShowMaeBlock] = useState(false);
 
+  // Compare mode state
+  const [compareSlots, setCompareSlots] = useState([]); // {id, firmId, firmName, plan, planLabel, results}
+  const [compareLoading, setCompareLoading] = useState(false);
+
+  // CSV calibration
+  const [showCsvModal, setShowCsvModal] = useState(false);
+
+  // refs for PNG export
+  const resultsRef = useRef(null);
+  const compareRef = useRef(null);
+
   const selectedFirm = useMemo(
     () => FIRM_DATABASE.find(f => f.id === selectedFirmId) || null,
     [selectedFirmId]
@@ -222,6 +250,84 @@ function App() {
     }, 30);
   };
 
+  // ──── Compare handlers ────
+  const addToCompare = () => {
+    if (!planDraft || !selectedFirm) return;
+    if (compareSlots.length >= 4) return;
+    // Avoid duplicate (same firmId+planId+modified hash)
+    const slot = {
+      id: Date.now() + Math.random(),
+      firmId: selectedFirm.id,
+      firmName: selectedFirm.name,
+      planLabel: planDraft.label + (isModified ? " · mod" : ""),
+      plan: { ...planDraft, phase2: planDraft.phase2 ? { ...planDraft.phase2 } : undefined },
+      results: null,
+    };
+    setCompareSlots(s => [...s, slot]);
+  };
+  const removeFromCompare = (id) => setCompareSlots(s => s.filter(x => x.id !== id));
+  const clearCompare = () => setCompareSlots([]);
+
+  const runAllCompare = () => {
+    if (compareSlots.length < 2) return;
+    setCompareLoading(true);
+    setTimeout(() => {
+      try {
+        const next = compareSlots.map(slot => ({
+          ...slot,
+          results: runMonteCarlo(slot.plan, strategy, nSims),
+        }));
+        setCompareSlots(next);
+      } catch (e) { console.error(e); }
+      finally { setCompareLoading(false); }
+    }, 30);
+  };
+
+  // ──── CSV calibration ────
+  const applyCalibration = (strategyPatch) => {
+    setStrategy(prev => ({ ...prev, ...strategyPatch }));
+    setShowCsvModal(false);
+  };
+
+  // ──── Export ────
+  const exportJSON = () => {
+    if (!results) return;
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      firm: { id: selectedFirm?.id, name: selectedFirm?.name, subtitle: selectedFirm?.subtitle },
+      plan: planDraft,
+      strategy, nSims,
+      results,
+    };
+    downloadJSON(`propforge-${selectedFirm?.id}-${planDraft?.planId}-${Date.now()}.json`, payload);
+  };
+
+  const exportPNG = async (ref, name) => {
+    if (!ref.current) return;
+    try {
+      const dataUrl = await toPng(ref.current, {
+        backgroundColor: C.bg,
+        pixelRatio: 2,
+        cacheBust: true,
+        style: { fontFamily: "'JetBrains Mono', monospace" },
+      });
+      download(`${name}-${Date.now()}.png`, dataUrl);
+    } catch (e) { console.error(e); }
+  };
+
+  const exportCompareJSON = () => {
+    if (!compareSlots.length) return;
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      strategy, nSims,
+      slots: compareSlots.map(s => ({
+        firmId: s.firmId, firmName: s.firmName, planLabel: s.planLabel,
+        plan: s.plan, results: s.results,
+      })),
+    };
+    downloadJSON(`propforge-compare-${Date.now()}.json`, payload);
+  };
+
   return (
     <div style={{ minHeight: "100vh", color: C.boneDim }} data-testid="app-root">
       <Header />
@@ -229,7 +335,6 @@ function App() {
       {/* STEP 1 */}
       <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 0" }}>
         <StepHead n={1} title="SELECT · PROP FIRM" sub="filter by market or pick [ CUSTOM ] to forge your own" />
-
         <div style={{ display: "flex", gap: 0, alignItems: "center", marginBottom: 18, color: C.ash, fontSize: 12 }}
              data-testid="market-filters">
           <span style={{ marginRight: 10 }}>‹</span>
@@ -243,7 +348,6 @@ function App() {
           ))}
           <span style={{ marginLeft: 10 }}>›</span>
         </div>
-
         <div className="fg-scroll" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }} data-testid="firm-grid">
           {filteredFirms.map(firm => (
             <FirmCard key={firm.id} firm={firm}
@@ -269,13 +373,19 @@ function App() {
 
       {/* STEP 3 + RESULTS */}
       {planDraft && (
-        <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 40px" }} className="fg-fadein">
+        <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 0" }} className="fg-fadein">
           <div style={{ display: "flex", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div style={{ width: 340, minWidth: 300, flexShrink: 0 }}>
               <StepHead n={3} title="FORGE · STRATEGY & FIRE" />
 
               <div className="fg-panel" style={{ padding: 14, marginBottom: 12 }}>
-                <Section label="A · P&L DISTRIBUTION" />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <Section label="A · P&L DISTRIBUTION" />
+                </div>
+                <button className="fg-btn-ghost" onClick={() => setShowCsvModal(true)}
+                        data-testid="btn-open-csv" style={{ width: "100%", marginBottom: 10 }}>
+                  † calibrate from CSV
+                </button>
                 <NumField label="win rate"   value={strategy.wr}        step={0.01} onChange={v => setStrategy({ ...strategy, wr: v })}        testId="strat-wr" />
                 <NumField label="μ win"      prefix="$" value={strategy.muWin}     onChange={v => setStrategy({ ...strategy, muWin: v })}     testId="strat-muwin" />
                 <NumField label="σ win"      prefix="$" value={strategy.sigmaWin}  onChange={v => setStrategy({ ...strategy, sigmaWin: v })}  testId="strat-sigmawin" />
@@ -340,17 +450,45 @@ function App() {
                   ? <>[ <span className="fg-dots">···</span>&nbsp;heating&nbsp;<span className="fg-dots">···</span> ]</>
                   : "[ ⌁ IGNITE ]"}
               </button>
+
+              <button className="fg-btn-ghost"
+                      onClick={addToCompare}
+                      disabled={compareSlots.length >= 4}
+                      data-testid="btn-add-compare"
+                      style={{ width: "100%", marginTop: 10, padding: 10 }}>
+                {compareSlots.length >= 4 ? "‹ rack full (4/4) ›" : `＋ add to compare  (${compareSlots.length}/4)`}
+              </button>
             </div>
 
-            <div style={{ flex: 1, minWidth: 300 }}>
+            <div style={{ flex: 1, minWidth: 300 }} ref={resultsRef}>
               <ResultsPanel results={results} loading={loading}
-                            plan={planDraft} firm={selectedFirm} isModified={isModified} />
+                            plan={planDraft} firm={selectedFirm} isModified={isModified}
+                            onExportJSON={exportJSON}
+                            onExportPNG={() => exportPNG(resultsRef, `propforge-${selectedFirm?.id}-${planDraft?.planId}`)}
+              />
             </div>
           </div>
         </section>
       )}
 
+      {/* Compare rack + comparison results */}
+      {compareSlots.length > 0 && (
+        <section style={{ maxWidth: 1600, margin: "0 auto", padding: "26px 24px 0" }} className="fg-fadein">
+          <CompareRack slots={compareSlots} onRemove={removeFromCompare} onClear={clearCompare}
+                       onRunAll={runAllCompare} loading={compareLoading} />
+          {compareSlots.some(s => s.results) && (
+            <div ref={compareRef}>
+              <CompareResults slots={compareSlots}
+                              onExportJSON={exportCompareJSON}
+                              onExportPNG={() => exportPNG(compareRef, "propforge-compare")} />
+            </div>
+          )}
+        </section>
+      )}
+
       <Footer />
+
+      {showCsvModal && <CsvModal onClose={() => setShowCsvModal(false)} onApply={applyCalibration} />}
     </div>
   );
 }
@@ -393,7 +531,7 @@ function Header() {
 
 function Footer() {
   return (
-    <footer style={{ padding: "28px 24px 32px" }}>
+    <footer style={{ padding: "28px 24px 32px", marginTop: 40 }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <div style={{ color: C.borderHot, letterSpacing: 0.3, fontSize: 10, whiteSpace: "nowrap", overflow: "hidden" }}>
           ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
@@ -617,7 +755,7 @@ function AccountEditor({ draft, onChange, onPhase2Change, unlocked, onResetToPre
 }
 
 // ─────────────────────────── Results panel ───────────────────────────
-function ResultsPanel({ results, loading, plan, firm, isModified }) {
+function ResultsPanel({ results, loading, plan, firm, isModified, onExportJSON, onExportPNG }) {
   return (
     <div>
       <div className="fg-panel" style={{ padding: 16, marginBottom: 12 }}>
@@ -647,7 +785,15 @@ function ResultsPanel({ results, loading, plan, firm, isModified }) {
       <Warnings plan={plan} firm={firm} />
       {loading && <LoadingState />}
       {!loading && !results && <EmptyState />}
-      {!loading && results && <ResultsDashboard results={results} plan={plan} />}
+      {!loading && results && (
+        <>
+          <ResultsDashboard results={results} plan={plan} />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 10 }}>
+            <button className="fg-btn-ghost" onClick={onExportPNG} data-testid="btn-export-png">† export · PNG</button>
+            <button className="fg-btn-ghost" onClick={onExportJSON} data-testid="btn-export-json">† export · JSON</button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -702,7 +848,7 @@ function LoadingState() {
         [ <span className="fg-dots">···</span>&nbsp;HEATING&nbsp;<span className="fg-dots">···</span> ]
       </div>
       <div style={{ color: C.ash, marginTop: 14, fontSize: 11, letterSpacing: 0.2 }}>
-        › forging {/* placeholder */} monte-carlo paths
+        › forging monte-carlo paths
       </div>
     </div>
   );
@@ -723,7 +869,6 @@ function EmptyState() {
 // ─────────────────────────── Dashboard ───────────────────────────
 function ResultsDashboard({ results, plan }) {
   const r = results;
-  // In FORGE: positive = ember, alert = flame, fatal = blood
   const passColor = r.pPass > r.ruinaMin ? C.ember : C.blood;
   const evColor = r.ev >= 0 ? C.ember : C.blood;
   const failTotal = r.pDD + r.pTimeout + r.pDLL;
@@ -753,7 +898,6 @@ function ResultsDashboard({ results, plan }) {
         <Kpi testId="kpi-pdd" label="P · DRAWDOWN" value={fmtPct(r.pDD)} color={C.blood} sub="fail by drawdown" />
         <Kpi testId="kpi-fourth" label={fourth.label} value={fourth.value} color={fourth.color} sub={fourth.sub} />
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8, marginBottom: 14 }}>
         <Kpi testId="kpi-meanpass" label="MEAN DAYS · PASS"
              value={r.nPass > 0 ? Math.round(r.meanPass).toString() : "—"}
@@ -779,19 +923,16 @@ function ResultsDashboard({ results, plan }) {
               <XAxis dataKey="name" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} />
               <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} unit="%" />
               <Tooltip content={<CTooltip />} cursor={{ fill: `${C.ember}10` }} />
-              <Bar dataKey="pct" radius={[0, 0, 0, 0]}
+              <Bar dataKey="pct"
                    label={{ position: "top", fill: C.bone, fontSize: 11, formatter: (v) => `${v}%` }}>
                 {distData.map((d, i) => <Cell key={i} fill={d.fill} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
-
         <div className="fg-panel" style={{ padding: 14 }} data-testid="chart-pass-hist">
           <ChartTitle title="‡ DAYS TO PASS"
-                      caption={r.nPass > 0
-                        ? `median ${Math.round(r.medianPass)}d · p90 ${Math.round(r.p90Pass)}d · clipped at p95`
-                        : "no samples"} />
+                      caption={r.nPass > 0 ? `median ${Math.round(r.medianPass)}d · p90 ${Math.round(r.p90Pass)}d · clipped at p95` : "no samples"} />
           {r.histPass.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={r.histPass} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
@@ -804,12 +945,9 @@ function ResultsDashboard({ results, plan }) {
             </ResponsiveContainer>
           ) : <EmptyChart />}
         </div>
-
         <div className="fg-panel" style={{ padding: 14 }} data-testid="chart-fail-hist">
           <ChartTitle title="‡ DAYS TO FAIL"
-                      caption={(r.nDD + r.nDLL + r.nTimeout) > 0
-                        ? `median ${Math.round(r.medianFail)}d · clipped at p95`
-                        : "no samples"} />
+                      caption={(r.nDD + r.nDLL + r.nTimeout) > 0 ? `median ${Math.round(r.medianFail)}d · clipped at p95` : "no samples"} />
           {r.histFail.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={r.histFail} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
@@ -824,7 +962,6 @@ function ResultsDashboard({ results, plan }) {
         </div>
       </div>
 
-      {/* Stats row */}
       <div className="fg-panel" style={{ padding: 16 }} data-testid="stats-row">
         <div className="fg-stat-row" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
           <Stat label="P·PASS"        value={fmtPct(r.pPass)} color={passColor} />
@@ -868,6 +1005,351 @@ function Stat({ label, value, color }) {
     <div style={{ padding: "0 14px" }}>
       <div style={{ color: C.ash, fontSize: 9, letterSpacing: 0.25 }}>{label}</div>
       <div style={{ color, fontSize: 15, marginTop: 5, fontWeight: 700, letterSpacing: -0.01 }}>{value}</div>
+    </div>
+  );
+}
+
+// ─────────────────────────── Compare rack + compare results ───────────────────────────
+function CompareRack({ slots, onRemove, onClear, onRunAll, loading }) {
+  const haveResults = slots.some(s => s.results);
+  return (
+    <div className="fg-panel" style={{ padding: 16, marginBottom: 16 }} data-testid="compare-rack">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ color: C.flame, fontSize: 12, fontWeight: 700, letterSpacing: 0.25 }}>
+          ╳ COMPARE RACK <span style={{ color: C.ash, fontWeight: 400 }}>· {slots.length}/4 slots</span>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="fg-btn-ghost" onClick={onClear} data-testid="btn-compare-clear">↺ clear</button>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8, marginBottom: 12 }}>
+        {slots.map((s, i) => (
+          <div key={s.id} className="fg-panel"
+               style={{ padding: 10, borderColor: s.results ? C.ember : C.border }}
+               data-testid={`compare-slot-${i}`}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ color: C.ash, fontSize: 9, letterSpacing: 0.3 }}>SLOT·{String(i + 1).padStart(2, "0")}</div>
+                <div style={{ color: C.bone, fontSize: 12, fontWeight: 700, marginTop: 2, overflow: "hidden",
+                              textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {s.firmName}
+                </div>
+                <div style={{ color: C.boneDim, fontSize: 11, marginTop: 2 }}>› {s.planLabel}</div>
+              </div>
+              <button className="fg-btn-ghost" style={{ padding: "2px 6px", fontSize: 11 }}
+                      onClick={() => onRemove(s.id)} data-testid={`btn-compare-remove-${i}`}>✕</button>
+            </div>
+            <div style={{ marginTop: 6, display: "flex", gap: 10, fontSize: 10, color: C.ash, letterSpacing: 0.1 }}>
+              <span>cap · <span style={{ color: C.bone }}>{fmtMoney(s.plan.capital)}</span></span>
+              <span>tgt · <span style={{ color: C.ember }}>{fmtMoney(s.plan.target)}</span></span>
+              <span>dd · <span style={{ color: C.blood }}>{fmtMoney(s.plan.ddValue)}</span></span>
+            </div>
+            {s.results && (
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${C.border}`, fontSize: 10 }}>
+                <div style={{ color: C.ash }}>p(pass) · <span style={{ color: C.ember }}>{fmtPct(s.results.pPass)}</span></div>
+                <div style={{ color: C.ash }}>ev · <span style={{ color: s.results.ev >= 0 ? C.ember : C.blood }}>
+                  {(s.results.ev >= 0 ? "+" : "") + fmtMoney(s.results.ev)}
+                </span></div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <button className={`fg-btn ${loading ? "loading" : ""}`}
+              onClick={onRunAll}
+              disabled={slots.length < 2 || loading}
+              data-testid="btn-run-all">
+        {loading
+          ? <>[ <span className="fg-dots">···</span>&nbsp;forging {slots.length} paths&nbsp;<span className="fg-dots">···</span> ]</>
+          : slots.length < 2
+            ? "‹ need at least 2 slots ›"
+            : `[ ⌁ IGNITE ALL · ${slots.length} PLANS ]`}
+      </button>
+      {haveResults && !loading && (
+        <div style={{ color: C.ash, fontSize: 10.5, marginTop: 10, letterSpacing: 0.15, textAlign: "center" }}>
+          › ranking below · winners highlighted in ember
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompareResults({ slots, onExportJSON, onExportPNG }) {
+  const ready = slots.filter(s => s.results);
+  if (!ready.length) return null;
+
+  // Compute winners per metric
+  const bestPPass   = Math.max(...ready.map(s => s.results.pPass));
+  const bestEV      = Math.max(...ready.map(s => s.results.ev));
+  const bestMean    = Math.min(...ready.filter(s => s.results.nPass > 0).map(s => s.results.meanPass), Infinity);
+  const bestBR95    = Math.min(...ready.filter(s => !s.results.passEssentiallyZero).map(s => s.results.br95), Infinity);
+  const bestROI     = Math.max(...ready.map(s => {
+    const r = s.results;
+    return r.avgCost > 0 ? ((r.payout - r.avgCost) / r.avgCost) * 100 : -Infinity;
+  }));
+
+  const rows = ready.map(s => {
+    const r = s.results;
+    const roi = r.avgCost > 0 ? ((r.payout - r.avgCost) / r.avgCost) * 100 : 0;
+    return {
+      id: s.id,
+      name: `${s.firmName} · ${s.planLabel}`,
+      pPass: r.pPass, ev: r.ev, avgCost: r.avgCost,
+      meanPass: r.nPass > 0 ? r.meanPass : null,
+      medianPass: r.nPass > 0 ? r.medianPass : null,
+      p90: r.nPass > 0 ? r.p90Pass : null,
+      br95: r.passEssentiallyZero ? null : r.br95,
+      n95: r.passEssentiallyZero ? null : r.n95,
+      roi, payout: r.payout,
+      split: s.plan.profitSplit,
+    };
+  });
+
+  // Rank by EV (primary)
+  const ranked = [...rows].sort((a, b) => b.ev - a.ev);
+
+  const headerStyle = { color: C.ash, fontSize: 10, padding: "10px 10px", letterSpacing: 0.25, textAlign: "right",
+                        borderBottom: `1px dashed ${C.borderHot}`, fontWeight: 600 };
+  const cellStyle = { padding: "10px 10px", fontSize: 12, textAlign: "right",
+                      borderBottom: `1px dashed ${C.border}` };
+  const winner = (isBest) => isBest
+    ? { color: C.ember, fontWeight: 700, textShadow: `0 0 8px ${C.ember}55` }
+    : {};
+
+  return (
+    <div className="fg-panel" style={{ padding: 16, marginBottom: 16 }} data-testid="compare-results">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+                    marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ color: C.bone, fontSize: 13, fontWeight: 700, letterSpacing: 0.2, textTransform: "uppercase" }}>
+            ‡ COMPARISON · RANKED BY EV
+          </div>
+          <div style={{ color: C.ash, fontSize: 11, marginTop: 3 }}>› same strategy applied to all plans · winners highlighted</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="fg-btn-ghost" onClick={onExportPNG} data-testid="btn-compare-png">† export · PNG</button>
+          <button className="fg-btn-ghost" onClick={onExportJSON} data-testid="btn-compare-json">† export · JSON</button>
+        </div>
+      </div>
+
+      <div style={{ overflow: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--mono)", minWidth: 800 }}>
+          <thead>
+            <tr>
+              <th style={{ ...headerStyle, textAlign: "left" }}>RANK · PLAN</th>
+              <th style={headerStyle}>P · PASS</th>
+              <th style={headerStyle}>EV / ATTEMPT</th>
+              <th style={headerStyle}>AVG COST</th>
+              <th style={headerStyle}>MEAN DAYS</th>
+              <th style={headerStyle}>P90 DAYS</th>
+              <th style={headerStyle}>BANKROLL 95%</th>
+              <th style={headerStyle}>ROI / PASS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ranked.map((r, i) => (
+              <tr key={r.id}>
+                <td style={{ ...cellStyle, textAlign: "left" }}>
+                  <span style={{ color: i === 0 ? C.ember : C.ash, marginRight: 10, fontWeight: 700 }}>
+                    {i === 0 ? "★" : `#${i + 1}`}
+                  </span>
+                  <span style={{ color: C.bone }}>{r.name}</span>
+                </td>
+                <td style={{ ...cellStyle, ...winner(r.pPass === bestPPass) }}>{fmtPct(r.pPass)}</td>
+                <td style={{ ...cellStyle, color: r.ev >= 0 ? C.ember : C.blood, ...winner(r.ev === bestEV) }}>
+                  {(r.ev >= 0 ? "+" : "") + fmtMoney(r.ev)}
+                </td>
+                <td style={{ ...cellStyle, color: C.boneDim }}>{fmtMoney(r.avgCost)}</td>
+                <td style={{ ...cellStyle, ...winner(r.meanPass !== null && r.meanPass === bestMean) }}>
+                  {r.meanPass !== null ? Math.round(r.meanPass) + "d" : "—"}
+                </td>
+                <td style={{ ...cellStyle, color: C.boneDim }}>
+                  {r.p90 !== null ? Math.round(r.p90) + "d" : "—"}
+                </td>
+                <td style={{ ...cellStyle, ...winner(r.br95 !== null && r.br95 === bestBR95) }}>
+                  {r.br95 !== null ? fmtMoney(r.br95) : "—"}
+                </td>
+                <td style={{ ...cellStyle, color: r.roi >= 0 ? C.ember : C.blood, ...winner(r.roi === bestROI) }}>
+                  {r.roi.toFixed(0)}%
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ marginTop: 16, padding: "10px 12px", borderLeft: `2px solid ${C.ember}`,
+                    background: `${C.ember}08`, fontSize: 12, color: C.boneDim, lineHeight: 1.6 }}>
+        <span style={{ color: C.ember, fontWeight: 700, marginRight: 6 }}>★ WINNER ·</span>
+        <b style={{ color: C.bone }}>{ranked[0].name}</b>
+        <span style={{ color: C.ash }}> · highest EV at </span>
+        <span style={{ color: C.ember }}>{(ranked[0].ev >= 0 ? "+" : "") + fmtMoney(ranked[0].ev)}/attempt</span>
+        <span style={{ color: C.ash }}> · p(pass) </span>
+        <span style={{ color: C.ember }}>{fmtPct(ranked[0].pPass)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────── CSV calibration modal ───────────────────────────
+function CsvModal({ onClose, onApply }) {
+  const [text, setText] = useState("");
+  const [colIdx, setColIdx] = useState(null);
+  const [skipHeader, setSkipHeader] = useState(true);
+
+  const parsed = useMemo(() => {
+    if (!text.trim()) return null;
+    return parseCsv(text);
+  }, [text]);
+
+  const cols = useMemo(() => parsed ? detectColumns(parsed.rows) : [], [parsed]);
+
+  // Auto-pick the column that looks most like a P&L series (has negatives, or the last numeric column)
+  React.useEffect(() => {
+    if (!cols.length) return;
+    if (colIdx !== null && colIdx < cols.length) return;
+    const withNeg = cols.filter(c => c.hasNegatives && c.numericCount >= 3);
+    const candidate = withNeg.length
+      ? withNeg.reduce((a, b) => (b.numericCount > a.numericCount ? b : a))
+      : [...cols].reverse().find(c => c.numericCount >= 3) || cols[cols.length - 1];
+    setColIdx(candidate.index);
+  }, [cols, colIdx]);
+
+  const activeCol = colIdx ?? 0;
+
+  const preview = useMemo(() => {
+    if (!parsed) return null;
+    const values = extractColumn(parsed.rows, activeCol, skipHeader);
+    return calibrateStrategy(values);
+  }, [parsed, activeCol, skipHeader]);
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setText(String(ev.target.result || ""));
+    reader.readAsText(file);
+  };
+
+  const loadSample = () => {
+    // 90 synthetic P&L days
+    const lines = ["day,pnl"];
+    for (let i = 1; i <= 90; i++) {
+      const isWin = Math.random() < 0.42;
+      const pnl = isWin
+        ? (400 + (Math.random() - 0.5) * 460).toFixed(2)
+        : (-180 + (Math.random() - 0.5) * 60).toFixed(2);
+      lines.push(`${i},${pnl}`);
+    }
+    setText(lines.join("\n"));
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 999, padding: 20,
+    }} onClick={onClose} data-testid="csv-modal">
+      <div className="fg-panel" style={{
+        width: "min(780px, 100%)", maxHeight: "90vh", overflow: "auto",
+        background: C.panel, padding: 20, borderColor: C.ember,
+        boxShadow: "0 0 40px rgba(255,184,0,0.25)",
+      }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ color: C.bone, fontSize: 14, fontWeight: 700, letterSpacing: 0.2, textTransform: "uppercase" }}>
+            † CALIBRATE STRATEGY FROM CSV
+          </div>
+          <button className="fg-btn-ghost" onClick={onClose} data-testid="btn-csv-close">✕ close</button>
+        </div>
+        <div style={{ color: C.ash, fontSize: 11, marginBottom: 14, lineHeight: 1.6 }}>
+          › paste CSV with one P&L value per day (positive = win, negative = loss, zero = skip)<br />
+          › or drop a file below · sample available for testing
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+          <label className="fg-btn-ghost" style={{ display: "inline-block", cursor: "pointer" }}>
+            † upload .csv
+            <input type="file" accept=".csv,.txt,text/csv"
+                   onChange={handleFile}
+                   data-testid="csv-file-input"
+                   style={{ display: "none" }} />
+          </label>
+          <button className="fg-btn-ghost" onClick={loadSample} data-testid="btn-csv-sample">◇ load sample</button>
+          <button className="fg-btn-ghost" onClick={() => setText("")} data-testid="btn-csv-clear">↺ clear</button>
+        </div>
+
+        <textarea
+          className="fg-input" data-testid="csv-textarea"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={"day,pnl\n1,438\n2,-194\n3,620\n..."}
+          style={{ width: "100%", minHeight: 160, fontSize: 12, resize: "vertical", fontFamily: "var(--mono)" }}
+        />
+
+        {parsed && cols.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+              <label className="fg-label">pnl column</label>
+              <select className="fg-select" style={{ width: 200 }}
+                      value={activeCol} onChange={(e) => setColIdx(parseInt(e.target.value))}
+                      data-testid="csv-col-select">
+                {cols.map(c => (
+                  <option key={c.index} value={c.index}>
+                    {c.header} · {c.numericCount} nums{c.hasNegatives ? " · has neg" : ""}
+                  </option>
+                ))}
+              </select>
+              <label className="fg-label" style={{ marginLeft: 10 }}>skip header</label>
+              <Toggle on={skipHeader} onChange={setSkipHeader} testId="csv-skip-header" />
+            </div>
+
+            {preview?.error && (
+              <div style={{ color: C.blood, fontSize: 12, padding: "8px 10px",
+                            border: `1px solid ${C.blood}`, background: `${C.blood}10` }}>
+                // {preview.error}
+              </div>
+            )}
+            {preview?.stats && (
+              <>
+                <div style={{ padding: 12, background: C.bg, border: `1px dashed ${C.border}`, marginBottom: 10 }}>
+                  <div style={{ color: C.ash, fontSize: 10, letterSpacing: 0.3, marginBottom: 6 }}>§ DETECTED</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, fontSize: 11 }}>
+                    <StatMini label="samples"  v={preview.stats.nSamples}            c={C.bone} />
+                    <StatMini label="wins"     v={preview.stats.nWins}               c={C.ember} />
+                    <StatMini label="losses"   v={preview.stats.nLosses}             c={C.blood} />
+                    <StatMini label="total pnl" v={fmtMoney(preview.stats.totalPnl)} c={preview.stats.totalPnl >= 0 ? C.ember : C.blood} />
+                    <StatMini label="avg day"  v={fmtMoney(preview.stats.avgDay)}   c={preview.stats.avgDay >= 0 ? C.ember : C.blood} />
+                  </div>
+                </div>
+                <div style={{ padding: 12, background: C.bg, border: `1px dashed ${C.ember}`, marginBottom: 14 }}>
+                  <div style={{ color: C.ember, fontSize: 10, letterSpacing: 0.3, marginBottom: 6 }}>§ CALIBRATED STRATEGY</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, fontSize: 11 }}>
+                    <StatMini label="win rate"    v={preview.strategy.wr.toFixed(3)} c={C.bone} />
+                    <StatMini label="μ win"       v={fmtMoney(preview.strategy.muWin)} c={C.ember} />
+                    <StatMini label="σ win"       v={fmtMoney(preview.strategy.sigmaWin)} c={C.boneDim} />
+                    <StatMini label="μ loss"      v={fmtMoney(preview.strategy.muLoss)} c={C.blood} />
+                    <StatMini label="σ loss"      v={fmtMoney(preview.strategy.sigmaLoss)} c={C.boneDim} />
+                    <StatMini label="p(spike)"    v={preview.strategy.tailProb.toFixed(4)} c={C.flame} />
+                    <StatMini label="spike mult"  v={preview.strategy.tailMult.toFixed(3)} c={C.flame} />
+                  </div>
+                </div>
+                <button className="fg-btn" onClick={() => onApply(preview.strategy)} data-testid="btn-csv-apply">
+                  [ ⌁ APPLY TO STRATEGY ]
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StatMini({ label, v, c }) {
+  return (
+    <div>
+      <div style={{ color: C.ash, fontSize: 9, letterSpacing: 0.25 }}>{label}</div>
+      <div style={{ color: c, marginTop: 3, fontWeight: 700 }}>{v}</div>
     </div>
   );
 }

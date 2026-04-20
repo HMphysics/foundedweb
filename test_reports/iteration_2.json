@@ -1,0 +1,72 @@
+{
+  "summary": "Comprehensive frontend testing of 3 new features (Compare Mode, Export PNG/JSON, CSV Calibration) completed. All features working correctly. 100% pass rate.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "minor_warnings": [
+      {
+        "component": "CsvModal column selector",
+        "issue": "React hydration warning about <span> inside <option> - development build only, doesn't affect functionality",
+        "priority": "LOW"
+      },
+      {
+        "component": "Export PNG",
+        "issue": "CORS warning when accessing Google Fonts CSS rules - known html-to-image library limitation, PNG still exports correctly",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_2.json"],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (client-side only)", "frontend": "100%"},
+  "test_credentials": "N/A - no authentication required",
+  "seed_data_creation": "N/A - client-side simulation only",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All 3 new features tested and working: (1) Compare Mode with up to 4 plans, IGNITE ALL, comparison table ranked by EV with winner highlighting, (2) Export PNG/JSON for single run and compare results, (3) CSV Calibration modal with sample generation, column detection, stats display, and strategy application. Core flow regression test also passed.",
+  "test_results": {
+    "passed": [
+      "Regression: Core flow works - pick firm → pick plan → IGNITE → results render with 8 KPIs + 3 charts + stats row",
+      "ADD TO COMPARE button (data-testid='btn-add-compare') - adds current planDraft to compare rack, counter shows '(N/4)', disabled when N=4",
+      "Compare rack (data-testid='compare-rack') appears when slots.length >= 1, shows SLOT-01..SLOT-04 cards with plan info (cap/target/dd), × removes slot, ↺ clear wipes all",
+      "IGNITE ALL button (data-testid='btn-run-all') - disabled if slots.length < 2, runs MC for every slot, updates slot cards with p(pass) and ev, renders comparison table",
+      "Comparison table (data-testid='compare-results') - rows ranked by EV descending, winner per metric highlighted in ember with text-shadow glow, rank col shows ★ for #1 and #N for others, columns: P·PASS, EV/ATTEMPT, AVG COST, MEAN DAYS, P90 DAYS, BANKROLL 95%, ROI/PASS",
+      "Comparison banner at bottom - '★ WINNER · {plan} · highest EV at +$X/attempt · p(pass) Y%'",
+      "Export PNG single (data-testid='btn-export-png') - clicking triggers download (CORS warning expected but PNG exports)",
+      "Export JSON single (data-testid='btn-export-json') - clicking triggers JSON download, no console errors",
+      "Export PNG compare (data-testid='btn-compare-png') and JSON (data-testid='btn-compare-json') - trigger downloads for compare view",
+      "CSV Modal - click 'calibrate from CSV' (data-testid='btn-open-csv') opens modal (data-testid='csv-modal'). Click [data-testid='btn-csv-sample'] generates 90 rows. Modal auto-picks the pnl column (the one with negatives). Detected stats section shows samples/wins/losses/total/avg. Calibrated strategy section shows win rate/μ win/σ win/μ loss/σ loss/p(spike)/spike mult",
+      "CSV apply (data-testid='btn-csv-apply') - clicking closes modal and updates the strategy panel values (strat-wr, strat-muwin, strat-sigmawin, strat-muloss, strat-sigmaloss reflect calibrated values)",
+      "CSV textarea (data-testid='csv-textarea') - accepts manual paste, re-parses on change",
+      "CSV file upload (data-testid='csv-file-input') - hidden file input exists, wrapped in label, accepts .csv",
+      "CSV skip header toggle (data-testid='csv-skip-header') - visible and functional",
+      "CSV column selector (data-testid='csv-col-select') - allows switching between detected columns",
+      "CSV error case - if column has no negatives/no losing days, shows red error '// No losing days found.' Never crashes",
+      "CSV close button (data-testid='btn-csv-close') closes modal",
+      "No critical console errors during full compare-mode + csv-calibration flow",
+      "No dark-on-dark invisible text - all text readable against dark backgrounds"
+    ],
+    "failed": []
+  },
+  "features_tested": {
+    "compare_mode": {
+      "status": "PASS",
+      "details": "Add up to 4 plans, IGNITE ALL runs MC for all, comparison table shows rankings by EV with winner highlighting"
+    },
+    "export_functionality": {
+      "status": "PASS",
+      "details": "PNG and JSON export work for both single run and compare results. PNG has expected CORS warning for Google Fonts but still exports."
+    },
+    "csv_calibration": {
+      "status": "PASS",
+      "details": "Modal opens, sample generates 90 rows, auto-detects pnl column, shows detected stats and calibrated strategy, apply updates strategy values"
+    }
+  }
+}
