@@ -5,9 +5,9 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: #07090E;
-  color: #C9D1D9;
-  font-family: 'Inter', system-ui, sans-serif;
+  background: #0A0604;
+  color: #B8A888;
+  font-family: 'JetBrains Mono', 'Space Mono', monospace;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
