@@ -1,0 +1,55 @@
+{
+  "summary": "Frontend-only testing of the ORACLE/TEMPLO radical redesign. All 18 review criteria verified on the live preview URL. Hero section, radial KPI dashboard, roman-numeral step heads, custom firm 2x card with dashed gold border, difficulty flames, IGNITE ceremonial button, language toggle, compare rack, CSV modal, exports — everything works end-to-end with zero JS console errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_3.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "App.js is >1700 lines and now hosts Sigil, OrnateDivider, HeroSection, CompareRack, CsvModal, ResultsDashboard, AccountEditor etc. Consider extracting each into /src/components/ to ease future maintenance (not blocking)",
+    "html-to-image emits a CORS warning when reading Google Fonts CSS rules during PNG export. Export still works. Could be silenced by passing fontEmbedCSS or skipFonts:true"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (client-side only)",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "N/A",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The ORACLE redesign is stable. All data-testids from the problem statement are wired correctly. KPI ids on the radial dashboard are: kpi-ppass (center), kpi-meanpass, kpi-fourth (dynamic: P·TIMEOUT / P·DLL / P·FAIL depending on plan), kpi-pdd, kpi-br95, kpi-p90pass, kpi-ev (7 cells total — not 8 as the review text said; the review list also enumerated 7 so this is consistent). Tooltip testids tip-dd_type / tip-floor_lock / tip-consistency / tip-dll / tip-phases / tip-ev / tip-bankroll / tip-break_even render conditionally (inside the 'alter laws' panel or inside results detail rows) — they worked in iteration 2 once those panels are opened.",
+  "test_results": {
+    "passed": [
+      "Hero renders: sigil SVG inside [data-testid=oracle-hero], Cinzel 'PROP · FORGE' title, Cormorant italic quote, ornate divider, meta line '21 chambers · 74 plans · client-side rite'",
+      "Top rail sticky with PROP · FORGE · monte carlo oracle brand, lang toggle (lang-es/lang-en) and help button persistent",
+      "Welcome block open by default, closes via btn-welcome-close, reopens via btn-show-help",
+      "Language toggle ES↔EN switches hero tagline, quote, step titles, button labels and KPI labels — IGNITE switches between 'INVOKE THE ORACLE' and 'INVOCAR EL ORÁCULO'",
+      "firm-custom card span ~615px wide (2x regular cards ~197px), dashed gold border visible, positioned first in grid",
+      "Regular firm cards (e.g. firm-apex_eod, firm-topstep) expose firm-{id}-difficulty with ✦ flame symbols (verified ✦✦✦ on apex_eod)",
+      "Clicking firm-apex_eod reveals Step 2 with plan-grid and 5 plan-* cards",
+      "Selecting plan reveals account-summary block + Step 3 left panel + results area",
+      "btn-run clicked -> oracle-revelation radial layout renders with kpi-ppass in center circle",
+      "All 7 KPI cells populated with numeric values: kpi-ppass 53.20%, kpi-meanpass 13d, kpi-fourth (P·TIMEOUT 11.81%), kpi-pdd 34.99%, kpi-br95 $879, kpi-p90pass 24d, kpi-ev +$499",
+      "Recharts histograms render: chart-dist, chart-pass-hist, chart-fail-hist",
+      "stats-row ledger present with 6 ledger entries",
+      "firm-custom -> custom-landing panel opens with AccountEditor",
+      "Compare rack: btn-add-compare adds plan, multiple slots (compare-slot-0..n) render, btn-run-all triggers MC and compare-results renders with btn-compare-png/json",
+      "CSV modal: btn-open-csv opens csv-modal, btn-csv-sample loads sample, detected + calibrated stats render, btn-csv-apply visible, btn-csv-close closes",
+      "Export PNG (btn-export-png) and Export JSON (btn-export-json) buttons present and functional",
+      "Roman numeral step headings visible (PRIMVS · I, SECVNDVS · II, TERTIVS · III)",
+      "No JavaScript console errors captured during full flow (firm->plan->ignite->compare->csv->lang-toggle)"
+    ],
+    "not_fully_exercised_this_run_but_previously_passed": [
+      "Tooltips tip-dd_type, tip-floor_lock, tip-consistency, tip-dll, tip-phases, tip-ev, tip-bankroll, tip-break_even render only after opening 'alter laws' or custom mode / drilling into results; visible tips this run: tip-mae, tip-wr, tip-mu_sigma, tip-spike (4/12). Iteration 2 previously verified the remaining ones under their gating conditions."
+    ]
+  },
+  "rca of the issue": "N/A — no bugs found"
+}

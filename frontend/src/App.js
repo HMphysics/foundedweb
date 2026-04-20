@@ -10,13 +10,13 @@ import { runMonteCarlo } from "./monteCarlo";
 import { parseCsv, detectColumns, extractColumn, calibrateStrategy } from "./csvCalibrate";
 import { makeT, detectBrowserLang, TOOLTIPS } from "./i18n";
 
-// ─────────────────────────── FORGE palette ───────────────────────────
+// ─────────────────────────── THE ORACLE palette ───────────────────────────
 const C = {
-  bg: "#0A0604", panel: "#120A06", elev: "#1A0E08",
-  border: "#2A1810", borderHot: "#4A2818",
-  ember: "#FFB800", flame: "#FF4500", blood: "#C8102E", bloodDark: "#8B0000",
-  char: "#3D1F0F", ash: "#8B7355",
-  bone: "#E8DCC4", boneDim: "#B8A888",
+  bg: "#050302", panel: "#0D0806", elev: "#1A0F0A",
+  border: "#2D1F15", borderHot: "#3D3228",
+  ember: "#B8860B", flame: "#E8B923", blood: "#C1272D", bloodDark: "#8B0000",
+  char: "#1A0F0A", ash: "#6B5A47",
+  bone: "#E8DCC4", boneDim: "#C4B59E",
 };
 
 const LangCtx = createContext({ lang: "en", t: makeT("en"), setLang: () => {} });
@@ -61,6 +61,44 @@ function downloadJSON(filename, obj) {
   download(filename, url);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+// ─────────────────────────── SVG ORNAMENTS ───────────────────────────
+function Sigil({ size = 120, color = C.ember, className = "" }) {
+  return (
+    <svg viewBox="0 0 120 120" width={size} height={size} className={className}
+         style={{ color, display: "block" }} aria-hidden="true">
+      <circle cx="60" cy="60" r="55" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
+      <circle cx="60" cy="60" r="45" fill="none" stroke="currentColor" strokeWidth="0.3" opacity="0.3" />
+      <polygon points="60,20 95,80 25,80" fill="none" stroke="currentColor" strokeWidth="0.75" opacity="0.6" />
+      <polygon points="60,100 25,40 95,40" fill="none" stroke="currentColor" strokeWidth="0.75" opacity="0.6" />
+      <circle cx="60" cy="60" r="8" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.95" />
+      <circle cx="60" cy="60" r="2" fill="currentColor" />
+      <text x="60" y="17" textAnchor="middle" fontFamily="Cinzel, serif" fontSize="8" fill="currentColor" opacity="0.8">※</text>
+      <text x="60" y="114" textAnchor="middle" fontFamily="Cinzel, serif" fontSize="8" fill="currentColor" opacity="0.8">※</text>
+      <text x="8" y="64" textAnchor="middle" fontFamily="Cinzel, serif" fontSize="8" fill="currentColor" opacity="0.8">†</text>
+      <text x="112" y="64" textAnchor="middle" fontFamily="Cinzel, serif" fontSize="8" fill="currentColor" opacity="0.8">†</text>
+    </svg>
+  );
+}
+function OrnateDivider({ color = C.ember, opacity = 0.75 }) {
+  return (
+    <svg viewBox="0 0 800 24" width="100%" height="20" aria-hidden="true"
+         style={{ color, display: "block", margin: "8px 0" }} preserveAspectRatio="none">
+      <line x1="0" y1="12" x2="340" y2="12" stroke="currentColor" strokeWidth="0.5" opacity={opacity * 0.4} />
+      <g transform="translate(400,12)">
+        <circle cx="-30" cy="0" r="1.2" fill="currentColor" opacity={opacity * 0.8} />
+        <circle cx="30"  cy="0" r="1.2" fill="currentColor" opacity={opacity * 0.8} />
+        <path d="M-22,0 L-11,-5 L0,0 L11,-5 L22,0 L11,5 L0,0 L-11,5 Z"
+              fill="none" stroke="currentColor" strokeWidth="0.75" opacity={opacity} />
+        <circle cx="0" cy="0" r="1.8" fill="currentColor" opacity={opacity} />
+      </g>
+      <line x1="460" y1="12" x2="800" y2="12" stroke="currentColor" strokeWidth="0.5" opacity={opacity * 0.4} />
+    </svg>
+  );
+}
+// Roman numerals for step headings
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII"];
+const ROMAN_PREFIX = ["", "PRIMVS", "SECVNDVS", "TERTIVS", "QVARTVS", "QVINTVS"];
 
 // ─────────────────────────── Atoms ───────────────────────────
 function Tag({ children, color = C.boneDim }) {
@@ -395,7 +433,7 @@ function AppInner() {
 
       {/* STEP 1 */}
       <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 0" }}>
-        <StepHead n={1} title={t("step_1_title")} sub={t("step_1_hint")} />
+        <StepHead n={1} title={t("step_1_title")} subtitle={t("step_1_subtitle")} sub={t("step_1_hint")} />
         <div style={{ display: "flex", gap: 0, alignItems: "center", marginBottom: 18, color: C.ash, fontSize: 12 }}
              data-testid="market-filters">
           <span style={{ marginRight: 10 }}>‹</span>
@@ -433,7 +471,8 @@ function AppInner() {
       {/* STEP 2 — either plan selector or custom landing */}
       {selectedFirm && !isCustomMode && (
         <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 0" }} className="fg-fadein">
-          <StepHead n={2} title={`${t("step_2_title")} — ${selectedFirm.name.toUpperCase()}`} sub={`› ${selectedFirm.subtitle}`} />
+          <StepHead n={2} title={`${t("step_2_title")} — ${selectedFirm.name.toUpperCase()}`}
+                    subtitle={t("step_2_subtitle")} sub={`${selectedFirm.subtitle}`} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }} data-testid="plan-grid">
             {selectedFirm.plans.map(plan => (
               <PlanCard key={plan.planId} plan={plan} firm={selectedFirm}
@@ -445,7 +484,7 @@ function AppInner() {
       )}
       {isCustomMode && (
         <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 0" }} className="fg-fadein">
-          <StepHead n={2} title={t("step_custom_title")} sub={t("step_custom_hint")} />
+          <StepHead n={2} title={t("step_custom_title")} subtitle={t("step_custom_subtitle")} sub={t("step_custom_hint")} />
           <div className="fg-panel" style={{ padding: 16, borderColor: C.ember, borderStyle: "dashed",
                                               background: `${C.ember}06` }} data-testid="custom-landing">
             <div style={{ color: C.boneDim, fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-line" }}>
@@ -463,7 +502,7 @@ function AppInner() {
         <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 0" }} className="fg-fadein">
           <div style={{ display: "flex", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div style={{ width: 340, minWidth: 300, flexShrink: 0 }}>
-              <StepHead n={3} title={t("step_3_title")} />
+              <StepHead n={3} title={t("step_3_title")} subtitle={t("step_3_subtitle")} sub={t("step_3_hint")} />
 
               <div className="fg-panel" style={{ padding: 14, marginBottom: 12 }}>
                 <SectionBar label={t("section_pnl")} />
@@ -587,48 +626,68 @@ function AppInner() {
   );
 }
 
-// ─────────────────────────── Header / Footer ───────────────────────────
+// ─────────────────────────── Rail + Hero ───────────────────────────
 function Header({ openWelcome, welcomeOpen }) {
   const { lang, t, setLang } = useT();
   const totalFirms = FIRM_DATABASE.filter(f => f.market !== "custom").length;
   const totalPlans = FIRM_DATABASE.reduce((a, f) => a + f.plans.length, 0);
   return (
-    <header style={{ padding: "22px 24px 18px", borderBottom: `1px solid ${C.border}`,
-                     background: `linear-gradient(180deg, ${C.panel} 0%, transparent 100%)` }}>
-      <div style={{ maxWidth: 1600, margin: "0 auto" }}>
-        <div style={{ color: C.borderHot, letterSpacing: 0, fontSize: 10, overflow: "hidden", whiteSpace: "nowrap" }}>
-          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", gap: 20, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ color: C.bone, fontWeight: 800, fontSize: 20, letterSpacing: "0.05em" }}>
-              <span style={{ color: C.ember, marginRight: 10, fontSize: 22 }}>⌁</span>
-              {t("app_title")}
-              <span style={{ color: C.ash, margin: "0 10px" }}>·</span>
-              <span style={{ color: C.boneDim, fontSize: 14 }}>MONTE CARLO SIMULATOR</span>
-            </div>
-            <div style={{ color: C.ash, fontSize: 11, marginTop: 4, letterSpacing: 0.1 }}>
-              {t("app_tagline")}
-            </div>
+    <>
+      <div className="oracle-rail">
+        <div className="oracle-rail-inner">
+          <div className="oracle-rail-brand">
+            {t("app_title")}<span style={{ color: C.ash, margin: "0 10px", letterSpacing: 0 }}>·</span>
+            <span style={{ fontFamily: "var(--cormorant)", fontStyle: "italic", fontWeight: 400,
+                           color: C.boneDim, letterSpacing: 0.05, textTransform: "none", fontSize: 12 }}>
+              monte carlo oracle
+            </span>
           </div>
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
             {!welcomeOpen && (
               <button className="fg-btn-ghost" onClick={openWelcome} data-testid="btn-show-help">
-                › {t("welcome_show")}
+                {t("welcome_show")}
               </button>
             )}
             <LangToggle lang={lang} setLang={setLang} />
-            <div style={{ textAlign: "right", color: C.ash, fontSize: 10.5, letterSpacing: 0.15 }}>
-              <div><span style={{ color: C.ember }}>●</span> {t("live_badge")}</div>
-              <div style={{ marginTop: 4 }}>{t("meta_counter", { firms: totalFirms, plans: totalPlans })}</div>
+            <div style={{ color: C.ash, fontSize: 10.5, letterSpacing: 0.2, fontFamily: "var(--mono)" }}>
+              <span style={{ color: C.ember }}>✦</span> {totalFirms}·{totalPlans}
             </div>
           </div>
         </div>
-        <div style={{ color: C.borderHot, letterSpacing: 0, fontSize: 10, overflow: "hidden", whiteSpace: "nowrap" }}>
-          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      </div>
+      <HeroSection lang={lang} />
+    </>
+  );
+}
+
+function HeroSection({ lang }) {
+  const { t } = useT();
+  const totalFirms = FIRM_DATABASE.filter(f => f.market !== "custom").length;
+  const totalPlans = FIRM_DATABASE.reduce((a, f) => a + f.plans.length, 0);
+  return (
+    <section className="oracle-hero" data-testid="oracle-hero">
+      <div className="oracle-hero-inner">
+        <Sigil className="hero-sigil" size={120} color={C.ember} />
+        <div className="oracle-roman" style={{ marginBottom: 10 }}>✦ oracvlvm statisticvm ✦</div>
+        <h1 className="oracle-h1" data-testid="hero-title">{t("app_title")}</h1>
+        <div className="oracle-sub" style={{ marginTop: 12 }}>
+          <em>{t("hero_tagline")}</em>
+        </div>
+        <div className="hero-dot-row">※ ⚜ ※</div>
+        <OrnateDivider color={C.ember} opacity={0.6} />
+        <blockquote className="hero-quote">
+          "{t("hero_quote")}"
+          <span className="hero-quote-cite">— {t("hero_quote_cite")}</span>
+        </blockquote>
+        <div className="hero-meta">
+          <span>{totalFirms} {t("hero_firms")}</span>
+          <span style={{ color: C.ember }}>·</span>
+          <span>{totalPlans} {t("hero_plans")}</span>
+          <span style={{ color: C.ember }}>·</span>
+          <span>{lang === "es" ? "client-side ritual" : "client-side rite"}</span>
         </div>
       </div>
-    </header>
+    </section>
   );
 }
 
@@ -720,17 +779,24 @@ function Footer() {
   );
 }
 
-function StepHead({ n, title, sub }) {
+function StepHead({ n, title, sub, subtitle }) {
+  const roman = ROMAN_PREFIX[n] ? `${ROMAN_PREFIX[n]} · ${ROMAN[n]}` : `${ROMAN[n]}`;
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-        <span style={{ color: C.flame, fontSize: 11, letterSpacing: 0.25, fontWeight: 700 }}>
-          ‡ {String(n).padStart(2, "0")}
-        </span>
-        <h2 style={{ margin: 0, color: C.bone, fontSize: 16, fontWeight: 700,
-                     letterSpacing: 0.05, textTransform: "uppercase" }}>{title}</h2>
-      </div>
-      {sub && <div style={{ color: C.ash, fontSize: 11, marginTop: 4, letterSpacing: 0.1 }}>{sub}</div>}
+    <div style={{ marginBottom: 18, marginTop: 8 }}>
+      <div className="oracle-roman" style={{ marginBottom: 6 }}>✦ {roman}</div>
+      <h2 className="oracle-h2" style={{ fontSize: 24, marginBottom: 6 }}>{title}</h2>
+      {subtitle && (
+        <div className="oracle-sub" style={{ color: C.ash, fontSize: 13, marginBottom: 4 }}>
+          <em>{subtitle}</em>
+        </div>
+      )}
+      {sub && (
+        <div style={{ color: C.boneDim, fontFamily: "var(--cormorant)", fontStyle: "italic",
+                      fontSize: 14, marginTop: 6, letterSpacing: 0.02, lineHeight: 1.5 }}>
+          {sub}
+        </div>
+      )}
+      <OrnateDivider color={C.ember} opacity={0.5} />
     </div>
   );
 }
@@ -739,33 +805,58 @@ function StepHead({ n, title, sub }) {
 function CustomFirstCard({ firm, selected, onClick }) {
   const { t } = useT();
   return (
-    <div
-      onClick={onClick} data-testid="firm-custom"
-      className={`fg-panel fg-card ${selected ? "selected" : ""}`}
-      style={{
-        padding: 18, display: "flex", flexDirection: "column", gap: 10, minHeight: 130,
-        borderStyle: selected ? "solid" : "dashed", borderColor: C.ember,
-        background: `${C.ember}06`,
-      }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ color: C.ember, fontSize: 20 }}>⌁</span>
-            <div style={{ color: C.bone, fontWeight: 700, fontSize: 14, letterSpacing: 0.04 }}>
-              {t("custom_card_title")}
-            </div>
-          </div>
-          <div style={{ color: C.boneDim, fontSize: 11, marginTop: 6, lineHeight: 1.5 }}>
-            › {t("custom_card_desc")}
+    <div onClick={onClick} data-testid="firm-custom"
+         className={`fg-panel fg-card custom-card ${selected ? "selected" : ""}`}
+         style={{ padding: 24, display: "flex", flexDirection: "column", gap: 12,
+                  alignItems: "flex-start", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <svg viewBox="0 0 64 64" width="56" height="56" aria-hidden="true"
+             style={{ color: C.ember, display: "block", flexShrink: 0, opacity: 0.85 }}>
+          {/* Anvil/hammer custom sigil */}
+          <circle cx="32" cy="32" r="30" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
+          <path d="M18,38 L18,44 L46,44 L46,38 Q46,34 42,34 L22,34 Q18,34 18,38 Z"
+                fill="none" stroke="currentColor" strokeWidth="1.25" />
+          <path d="M12,34 L52,34" stroke="currentColor" strokeWidth="0.75" opacity="0.6" />
+          <path d="M32,22 L32,34 M28,26 L36,26" stroke="currentColor" strokeWidth="1" opacity="0.9" />
+          <text x="32" y="20" textAnchor="middle" fontFamily="Cinzel" fontSize="6"
+                fill="currentColor" opacity="0.7">※</text>
+        </svg>
+        <div>
+          <div className="oracle-roman" style={{ marginBottom: 4 }}>✦ vocatio propria</div>
+          <div style={{ fontFamily: "var(--cinzel)", fontWeight: 900, color: C.bone,
+                        fontSize: 18, letterSpacing: 0.18, textTransform: "uppercase" }}>
+            {t("custom_card_title")}
           </div>
         </div>
-        <Tag color={firm.badgeColor}>{firm.badge}</Tag>
       </div>
-      <div style={{ marginTop: "auto", color: C.ember, fontSize: 12, fontWeight: 700, letterSpacing: 0.15 }}>
-        [ {t("custom_card_cta")} ]
+      <div style={{ fontFamily: "var(--cormorant)", fontStyle: "italic", color: C.boneDim,
+                    fontSize: 14, lineHeight: 1.6, maxWidth: 480 }}>
+        {t("custom_card_desc")}
+      </div>
+      <div style={{ marginTop: 6, color: C.ember, fontFamily: "var(--cinzel)",
+                    fontWeight: 600, fontSize: 11, letterSpacing: 0.35, textTransform: "uppercase" }}>
+        → {t("custom_card_cta")}
       </div>
     </div>
   );
+}
+
+// Difficulty estimate from firm plans → 1..3 flames
+function estimateDifficulty(firm) {
+  let score = 1;
+  const hasIntraday = firm.plans.some(p => p.ddType === "trailing_intraday");
+  const hasEod      = firm.plans.some(p => p.ddType === "trailing_eod");
+  const hasStatic   = firm.plans.some(p => p.ddType === "static");
+  const fatalDLL    = firm.plans.some(p => p.dailyLossIsFatal);
+  const twoPhase    = firm.plans.some(p => p.phases === 2);
+  const hasCons     = firm.plans.some(p => p.consistency);
+  if (hasIntraday) score = Math.max(score, 3);
+  else if (hasEod) score = Math.max(score, 2);
+  else if (hasStatic) score = Math.max(score, 1);
+  if (fatalDLL) score++;
+  if (twoPhase) score++;
+  if (hasCons)  score++;
+  return Math.min(3, Math.max(1, Math.round(score / 2)));
 }
 
 function FirmCard({ firm, selected, onClick }) {
@@ -778,26 +869,37 @@ function FirmCard({ firm, selected, onClick }) {
   const ddCol = (type) => ({
     trailing_eod: C.ember, trailing_intraday: C.flame, static: C.ash
   }[type] || C.ash);
+  const stars = estimateDifficulty(firm);
   return (
     <div className={`fg-panel fg-card ${selected ? "selected" : ""}`}
          onClick={onClick} data-testid={`firm-${firm.id}`}
-         style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10, minHeight: 130 }}>
+         style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12, minHeight: 150 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ color: C.bone, fontWeight: 700, fontSize: 14, letterSpacing: 0.02,
+          <div style={{ fontFamily: "var(--cinzel)", fontWeight: 600, color: C.bone, fontSize: 14,
+                        letterSpacing: 0.08, textTransform: "uppercase",
                         whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {firm.name}
           </div>
-          <div style={{ color: C.ash, fontSize: 11, marginTop: 2 }}>› {firm.subtitle}</div>
+          <div className="difficulty-label" style={{ marginTop: 4 }}>
+            <em>{firm.subtitle}</em>
+          </div>
         </div>
         <Tag color={firm.badgeColor}>{firm.badge}</Tag>
       </div>
-      <div style={{ marginTop: "auto", display: "flex", flexWrap: "wrap", gap: 10, fontSize: 10, letterSpacing: 0.15 }}>
-        {ddTypes.map(ty => (
-          <span key={ty} style={{ color: ddCol(ty) }}>◆ {ddTag(ty)}</span>
-        ))}
-        {firm.allowsOvernight && <span style={{ color: C.boneDim }}>{t("overnight_badge")}</span>}
-        {hasTwoPhase && <span style={{ color: C.flame }}>{t("two_phase_badge")}</span>}
+      <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between",
+                    gap: 10, flexWrap: "wrap" }}>
+        <span className="fg-rating" data-testid={`firm-${firm.id}-difficulty`}>
+          {"✦".repeat(stars)}<span className="dim">{"✦".repeat(3 - stars)}</span>
+        </span>
+        <div style={{ display: "flex", gap: 10, fontSize: 10, letterSpacing: 0.15,
+                      fontFamily: "var(--mono)" }}>
+          {ddTypes.map(ty => (
+            <span key={ty} style={{ color: ddCol(ty) }}>◆ {ddTag(ty)}</span>
+          ))}
+          {firm.allowsOvernight && <span style={{ color: C.boneDim }}>{t("overnight_badge")}</span>}
+          {hasTwoPhase && <span style={{ color: C.flame }}>{t("two_phase_badge")}</span>}
+        </div>
       </div>
     </div>
   );
@@ -1122,11 +1224,22 @@ function EmptyState() {
   );
 }
 
-// ─────────────────────────── Dashboard ───────────────────────────
+// ─────────────────────────── Dashboard — THE REVELATION ───────────────────────────
+function OracleKpi({ label, value, sub, color = C.bone, testId }) {
+  return (
+    <div className="oracle-kpi" data-testid={testId}>
+      <div className="lbl">{label}</div>
+      <div className="val" style={{ color }}>{value}</div>
+      {sub && <div className="sub">{sub}</div>}
+    </div>
+  );
+}
+
 function ResultsDashboard({ results, plan }) {
   const { t } = useT();
   const r = results;
-  const passColor = r.pPass > r.ruinaMin ? C.ember : C.blood;
+  const passing = r.pPass > r.ruinaMin;
+  const passColor = passing ? C.ember : C.blood;
   const evColor = r.ev >= 0 ? C.ember : C.blood;
   const failTotal = r.pDD + r.pTimeout + r.pDLL;
 
@@ -1144,37 +1257,55 @@ function ResultsDashboard({ results, plan }) {
   if (r.pTimeout > 0) distData.push({ name: "TIMEOUT", pct: +(r.pTimeout * 100).toFixed(2), fill: C.flame });
   if (r.pDLL     > 0) distData.push({ name: "DLL",     pct: +(r.pDLL     * 100).toFixed(2), fill: C.bloodDark });
 
+  // Radial layout — 3x3 grid with 6 peripheral KPIs + center
+  const kpiTL = { label: t("kpi_mean_days"),
+                  value: r.nPass > 0 ? `${Math.round(r.meanPass)}d` : "—",
+                  sub:   r.nPass > 0 ? t("kpi_mean_days_sub_ok", { x: Math.round(r.medianPass) }) : t("kpi_mean_days_sub_none"),
+                  color: C.bone, testId: "kpi-meanpass" };
+  const kpiTC = { label: fourth.label, value: fourth.value, sub: fourth.sub, color: fourth.color, testId: "kpi-fourth" };
+  const kpiTR = { label: t("kpi_p_dd"), value: fmtPct(r.pDD), sub: t("kpi_p_dd_sub"), color: C.blood, testId: "kpi-pdd" };
+  const kpiBL = { label: t("kpi_bankroll"),
+                  value: r.passEssentiallyZero ? "—" : fmtMoney(r.br95),
+                  sub:   r.passEssentiallyZero ? t("kpi_bankroll_sub_zero") : t("kpi_bankroll_sub_ok", { x: fmtInt(r.n95) }),
+                  color: C.ember, testId: "kpi-br95" };
+  const kpiBC = { label: t("kpi_p90_days"),
+                  value: r.nPass > 0 ? `${Math.round(r.p90Pass)}d` : "—",
+                  sub: t("kpi_p90_days_sub"), color: C.ember, testId: "kpi-p90pass" };
+  const kpiBR = { label: t("kpi_ev"),
+                  value: (r.ev >= 0 ? "+" : "-") + fmtMoney(Math.abs(r.ev)),
+                  sub: t("kpi_ev_sub", { x: fmtMoney(r.avgCost) }),
+                  color: evColor, testId: "kpi-ev" };
+
   return (
     <div data-testid="results-dashboard">
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8, marginBottom: 8 }}>
-        <Kpi testId="kpi-ppass" label={t("kpi_p_pass")} value={fmtPct(r.pPass)} color={passColor} tip="break_even"
-             sub={t("kpi_p_pass_sub", { x: (r.ruinaMin * 100).toFixed(1) })} />
-        <Kpi testId="kpi-ev" label={t("kpi_ev")}
-             value={(r.ev >= 0 ? "+" : "-") + fmtMoney(Math.abs(r.ev))}
-             color={evColor} tip="ev"
-             sub={t("kpi_ev_sub", { x: fmtMoney(r.avgCost) })} />
-        <Kpi testId="kpi-pdd" label={t("kpi_p_dd")} value={fmtPct(r.pDD)} color={C.blood} sub={t("kpi_p_dd_sub")} />
-        <Kpi testId="kpi-fourth" label={fourth.label} value={fourth.value} color={fourth.color} sub={fourth.sub} />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8, marginBottom: 14 }}>
-        <Kpi testId="kpi-meanpass" label={t("kpi_mean_days")}
-             value={r.nPass > 0 ? Math.round(r.meanPass).toString() : "—"}
-             color={C.bone}
-             sub={r.nPass > 0 ? t("kpi_mean_days_sub_ok", { x: Math.round(r.medianPass) }) : t("kpi_mean_days_sub_none")} />
-        <Kpi testId="kpi-p90pass" label={t("kpi_p90_days")}
-             value={r.nPass > 0 ? Math.round(r.p90Pass).toString() : "—"}
-             color={C.ember} sub={t("kpi_p90_days_sub")} />
-        <Kpi testId="kpi-br95" label={t("kpi_bankroll")} tip="bankroll"
-             value={r.passEssentiallyZero ? "—" : fmtMoney(r.br95)}
-             color={C.ember}
-             sub={r.passEssentiallyZero ? t("kpi_bankroll_sub_zero") : t("kpi_bankroll_sub_ok", { x: fmtInt(r.n95) })} />
-        <Kpi testId="kpi-medi" label={t("kpi_median_attempts")}
-             value={r.passEssentiallyZero ? "—" : fmtInt(r.medIntentos)}
-             color={C.bone} sub={t("kpi_median_attempts_sub")} />
+      <div className="oracle-chapter">
+        <div className="tag">✦ {t("reveal_tag")} ✦</div>
+        <div className="title">{t("reveal_title")}</div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 8, marginBottom: 10 }}>
-        <div className="fg-panel" style={{ padding: 14 }} data-testid="chart-dist">
+      <div className="oracle-revelation kpi-stagger" data-testid="oracle-revelation">
+        <OracleKpi {...kpiTL} />
+        <OracleKpi {...kpiTC} />
+        <OracleKpi {...kpiTR} />
+        <OracleKpi {...kpiBL} />
+        <div className={`oracle-kpi-center ${passing ? "passing" : "failing"}`} data-testid="kpi-ppass">
+          <div className="lbl">{t("kpi_p_pass")}</div>
+          <div className="big" style={{ color: passColor }}>{fmtPct(r.pPass)}</div>
+          <div className="sub">
+            <em>{t("kpi_p_pass_sub", { x: (r.ruinaMin * 100).toFixed(1) })}</em>
+          </div>
+        </div>
+        <OracleKpi {...kpiBC} />
+        <OracleKpi {...kpiBR} />
+      </div>
+
+      <div className="oracle-chapter">
+        <div className="tag">‡ {t("chart_chapter")} ‡</div>
+        <div className="title">{t("chart_chapter_title")}</div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12, marginBottom: 14 }}>
+        <div className="fg-panel" style={{ padding: 16 }} data-testid="chart-dist">
           <ChartTitle title={t("chart_result_dist")} />
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={distData} margin={{ top: 20, right: 10, left: 4, bottom: 0 }}>
@@ -1188,7 +1319,7 @@ function ResultsDashboard({ results, plan }) {
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="fg-panel" style={{ padding: 14 }} data-testid="chart-pass-hist">
+        <div className="fg-panel" style={{ padding: 16 }} data-testid="chart-pass-hist">
           <ChartTitle title={t("chart_days_pass")}
                       caption={r.nPass > 0 ? t("chart_cap_pass", { m: Math.round(r.medianPass), p90: Math.round(r.p90Pass) }) : t("chart_no_samples")} />
           {r.histPass.length > 0 ? (
@@ -1203,7 +1334,7 @@ function ResultsDashboard({ results, plan }) {
             </ResponsiveContainer>
           ) : <EmptyChart />}
         </div>
-        <div className="fg-panel" style={{ padding: 14 }} data-testid="chart-fail-hist">
+        <div className="fg-panel" style={{ padding: 16 }} data-testid="chart-fail-hist">
           <ChartTitle title={t("chart_days_fail")}
                       caption={(r.nDD + r.nDLL + r.nTimeout) > 0 ? t("chart_cap_fail", { m: Math.round(r.medianFail) }) : t("chart_no_samples")} />
           {r.histFail.length > 0 ? (
@@ -1220,17 +1351,26 @@ function ResultsDashboard({ results, plan }) {
         </div>
       </div>
 
-      <div className="fg-panel" style={{ padding: 16 }} data-testid="stats-row">
-        <div className="fg-stat-row" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
-          <Stat label={t("stat_p_pass")}  value={fmtPct(r.pPass)} color={passColor} />
-          <Stat label={t("stat_ev_net")}  value={(r.ev >= 0 ? "+" : "") + fmtMoney(r.ev)} color={evColor} />
-          <Stat label={t("stat_br99")}    value={r.passEssentiallyZero ? "—" : fmtMoney(r.br99)} color={C.ember} />
-          <Stat label={t("stat_att99")}   value={r.passEssentiallyZero ? "—" : fmtInt(r.n99)} color={C.bone} />
-          <Stat label={t("stat_roi")}     value={`${ROI.toFixed(0)}%`} color={ROI >= 0 ? C.ember : C.blood} />
-          <Stat label={t("stat_split")}   value={`${(plan.profitSplit * 100).toFixed(0)}%`} color={C.boneDim} />
-        </div>
-        <div style={{ borderTop: `1px dashed ${C.border}`, marginTop: 14, paddingTop: 10,
-                      color: C.ash, fontSize: 10.5, letterSpacing: 0.1 }}>
+      <div className="oracle-chapter">
+        <div className="tag">§ {t("ledger_chapter")} §</div>
+        <div className="title">{t("ledger_chapter_title")}</div>
+      </div>
+
+      <div className="oracle-ledger" data-testid="stats-row">
+        <div className="row"><span className="k">{t("stat_p_pass")}</span>
+          <span className="v" style={{ color: passColor }}>{fmtPct(r.pPass)}</span></div>
+        <div className="row"><span className="k">{t("stat_ev_net")}</span>
+          <span className="v" style={{ color: evColor }}>{(r.ev >= 0 ? "+" : "") + fmtMoney(r.ev)}</span></div>
+        <div className="row"><span className="k">{t("stat_br99")}</span>
+          <span className="v" style={{ color: C.ember }}>{r.passEssentiallyZero ? "—" : fmtMoney(r.br99)}</span></div>
+        <div className="row"><span className="k">{t("stat_att99")}</span>
+          <span className="v">{r.passEssentiallyZero ? "—" : fmtInt(r.n99)}</span></div>
+        <div className="row"><span className="k">{t("stat_roi")}</span>
+          <span className="v" style={{ color: ROI >= 0 ? C.ember : C.blood }}>{ROI.toFixed(0)}%</span></div>
+        <div className="row"><span className="k">{t("stat_split")}</span>
+          <span className="v">{(plan.profitSplit * 100).toFixed(0)}%</span></div>
+        <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px dotted ${C.borderHot}`,
+                      color: C.ash, fontSize: 10.5, letterSpacing: 0.1, fontFamily: "var(--mono)" }}>
           {t("stat_footer", { sims: r.nSims.toLocaleString("en-US"), pass: r.nPass, dd: r.nDD, to: r.nTimeout, dll: r.nDLL })}
           <span style={{ color: C.ember }}>{fmtMoney(r.payout)}</span>
         </div>
