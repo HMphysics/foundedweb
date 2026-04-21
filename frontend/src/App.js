@@ -1096,6 +1096,8 @@ function Glossary() {
     { id: "cons",       letter: "D", title: t("gloss_d_title") },
     { id: "mae",        letter: "E", title: t("gloss_e_title") },
     { id: "metrics",    letter: "F", title: t("gloss_f_title") },
+    { id: "lifecycle",  letter: "G", title: t("gloss_g_title") },
+    { id: "ops",        letter: "H", title: t("gloss_h_title") },
   ], [t]);
 
   const terms = useMemo(() => ([
@@ -1117,6 +1119,13 @@ function Glossary() {
     { section: "metrics", name: t("gloss_bankroll_name"),     body: t("gloss_bankroll_body") },
     { section: "metrics", name: t("gloss_days_name"),         body: t("gloss_days_body") },
     { section: "metrics", name: t("gloss_attempts_name"),     body: t("gloss_attempts_body") },
+    { section: "metrics", name: t("gloss_attempt_curve_name"), body: t("gloss_attempt_curve_body") },
+    { section: "lifecycle", name: t("gloss_funded_name"),     body: t("gloss_funded_body") },
+    { section: "lifecycle", name: t("gloss_payout_name"),     body: t("gloss_payout_body") },
+    { section: "lifecycle", name: t("gloss_takehome_name"),   body: t("gloss_takehome_body") },
+    { section: "ops", name: t("gloss_commissions_name"),      body: t("gloss_commissions_body") },
+    { section: "ops", name: t("gloss_behavioral_name"),       body: t("gloss_behavioral_body") },
+    { section: "ops", name: t("gloss_autocorr_name"),         body: t("gloss_autocorr_body") },
   ]), [t]);
 
   const q = query.trim().toLowerCase();
