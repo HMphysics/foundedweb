@@ -54,12 +54,12 @@ Each tab has an 180px Fraunces watermark number (01-04).
 - ✅ Archive Noir visual redesign + 4 tabs + Glossary (iteration 5)
 - ✅ **Bootstrap mode + commissions + behavioral + instrument MAE + attempt curve (iteration 6, Feb 2026)** — 15/15 frontend tests passed, 0 console errors
 - ✅ Deployment fixes (Procfile, requirements clean, date-fns pin, react-day-picker removal, react-is add, .npmrc)
+- ✅ **Ciclo post-PASS — funded-account + payouts simulation (iteration 7, Feb 2026)** — 14/14 frontend tests passed, 100% success rate, 0 console errors. Added: `simulateFundedPhase` engine, `FUNDED_DEFAULTS` + per-firm overrides + `resolveFundedRules` in `firmDatabase.js`, new `PostPassSection` in STRATEGY (toggle + horizon slider 1–24m + size mode same/reduced + 15 rule overrides), new `FundedLifecyclePanel` in ORACLE (NET expected, Lifetime EV, mean payouts, P(survive) 3/6/12m, time-to-first-payout median, breach breakdown, 3 charts: net-hist, payout-count-hist, net-by-month). Glossary extended with CICLO POST-PASS / SAFETY NET / CONSISTENCY POST-PASS. Also fixed broken `en:` wrapper in i18n.js left by previous session.
 
 ## Prioritized Backlog
 ### P1
 - Shareable URL-encoded plan+strategy config (hash in query string)
-- Post-PASS payout lifecycle simulation
-- Add GLOSS terms for new features (COMMISSIONS, ATTEMPT CURVE, BEHAVIORAL MODEL, AUTOCORRELATION WARNING)
+- CSV dual-use: SIMPLE summary vs BOOTSTRAP literal
 
 ### P2
 - Multi-attempt equity curve visualization
@@ -68,7 +68,8 @@ Each tab has an 180px Fraunces watermark number (01-04).
 - "Fingerprint" share-link for a strategy config
 
 ## Sanity Checks
-- Apex 50K Intraday · SIMPLE defaults → P(PASS) ≈ 15-35%, positive/slight-negative EV (verified in iteration 6)
+- Apex 50K Intraday · SIMPLE defaults → P(PASS) ≈ 15-35%, positive/slight-negative EV
 - FTMO 50K 2-phase · defaults → P(PASS) ≈ 2-4%, EV strongly negative
-- Bootstrap 33 samples (small, noisy) → works, produces valid numbers, warning shown
-- Commission $40/day reduces EV by ~$1,800 per attempt (avg 45 days)
+- Bootstrap 33 samples → works, warning shown
+- Commission $40/day reduces EV by ~$1,800 per attempt
+- Apex EOD post-PASS + default custom strategy + horizon 3m → P(survive)=0%, DD-breach=100% (REALISTIC — trailing DD + weak defaults; confirmed by testing agent iteration 7, not a bug)
