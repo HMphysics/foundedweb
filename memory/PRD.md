@@ -60,12 +60,12 @@ Each tab has an 180px Fraunces watermark number (01-04).
   - TAREA 2: Refactored App.js from 2689 → 1532 lines. Extracted modules: `lib/colors.js`, `lib/format.js`, `lib/export.js`, `components/LangContext.jsx`, `components/Glossary.jsx`, `components/CsvModal.jsx`, `components/charting.jsx` (CTooltip/ChartTitle/EmptyChart), `components/shared/ui.jsx` (10 atoms), `components/oracle/FundedLifecyclePanel.jsx`, `components/strategy/StrategySections.jsx` (all 7 sections). App.js is now an orchestrator (state + handlers + tab routing + remaining display components: Header/Footer/FirmCard/PlanCard/AccountSummary/AccountEditor/ResultsDashboard/CompareRack/CompareResults). Under 300 lines was not reached in this pass — remaining 1532 lines contain ~11 display components (Oracle dashboard is ~400 lines alone) that can be extracted in a future pass.
   - TAREA 3: IGNITE button disabled-state hints — new testids `ignite-hint` + `ignite-hint-link` with 3 contextual messages (chamber_missing / bootstrap_empty / bootstrap_too_few), plus CSS variant under App.css. BootstrapInput textarea now live-parses so the hint reflects real-time count.
   - TAREA 4: Glossary audit — added WINNING DAYS and CALENDAR vs TRADING DAYS terms in section H (OPERATIONS) with numeric examples, both ES and EN.
+- ✅ **PASO 4 · Finish App.js refactor (iteration 10, Feb 2026)** — **12/12 regression checkpoints pass**, zero console errors. App.js went from **1532 → 256 lines** (target <300 achieved). New extractions: `layout/{Header,Footer,WelcomeBlock,HeaderSeal}.jsx`, `chamber/{ChamberTab,FirmCard,PlanCard,CustomCard,AccountSummary}.jsx`, `account/AccountEditor.jsx`, `oracle/{OracleTab,ResultsPanel,ResultsDashboard}.jsx`, `strategy/StrategyTab.jsx`, `compare/{CompareRack,CompareResults}.jsx`. Removed 11 dead stub functions (IrregularBorder/DecoTarot/etc). App.js is now a pure shell: imports + state + handlers + tab routing. From 2689 → 256 lines total = **90.5% reduction across PASO 3+4**.
 
 ## Prioritized Backlog
 ### P1
 - Shareable URL-encoded plan+strategy config (hash in query string)
 - CSV dual-use: SIMPLE summary vs BOOTSTRAP literal
-- Finish App.js refactor (target <300 lines) — extract Oracle dashboard, FirmCard/PlanCard, AccountEditor/AccountSummary, CompareRack/CompareResults into their own files.
 
 ### P2
 - Multi-attempt equity curve visualization
