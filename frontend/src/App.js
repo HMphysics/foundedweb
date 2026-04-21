@@ -10,13 +10,14 @@ import { runMonteCarlo } from "./monteCarlo";
 import { parseCsv, detectColumns, extractColumn, calibrateStrategy } from "./csvCalibrate";
 import { makeT, detectBrowserLang, TOOLTIPS } from "./i18n";
 
-// ─────────────────────────── THE ORACLE palette ───────────────────────────
+// ─────────────────────────── THE ORACLE v2 palette ───────────────────────────
 const C = {
-  bg: "#050302", panel: "#0D0806", elev: "#1A0F0A",
-  border: "#2D1F15", borderHot: "#3D3228",
-  ember: "#B8860B", flame: "#E8B923", blood: "#C1272D", bloodDark: "#8B0000",
-  char: "#1A0F0A", ash: "#6B5A47",
-  bone: "#E8DCC4", boneDim: "#C4B59E",
+  bg: "#130507", panel: "#1F0A0D", elev: "#2B1013",
+  border: "#3D1A1F", borderHot: "#5A4A3D",
+  ember: "#EFE547", flame: "#C41E3A", blood: "#C41E3A", bloodDark: "#8B2500",
+  char: "#1F0A0D", ash: "#9A8670",
+  bone: "#E8D9B8", boneDim: "#E8D9B8",
+  wicked: "#7A4FD6", mercury: "#A8B0B5", rust: "#8B2500",
 };
 
 const LangCtx = createContext({ lang: "en", t: makeT("en"), setLang: () => {} });
@@ -62,42 +63,133 @@ function downloadJSON(filename, obj) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// ─────────────────────────── SVG ORNAMENTS ───────────────────────────
-function Sigil({ size = 120, color = C.ember, className = "" }) {
+// ─────────────────────────── v2 DECORATIVE SVG OBJECTS ───────────────────────────
+function DecoTarot() {
+  return (
+    <svg viewBox="0 0 120 180" className="deco-tarot" aria-hidden="true">
+      <defs>
+        <filter id="grunge">
+          <feTurbulence baseFrequency="0.7" numOctaves="2" />
+          <feColorMatrix values="0 0 0 0 0.8   0 0 0 0 0.5   0 0 0 0 0.2   0 0 0 0.4 0" />
+        </filter>
+      </defs>
+      <rect x="4" y="4" width="112" height="172" rx="2" fill="#1F0A0D" stroke="#8B2500" strokeWidth="1" />
+      <rect x="8" y="8" width="104" height="164" rx="1" fill="none" stroke="#EFE547" strokeWidth="0.5" opacity="0.6" />
+      <text x="60" y="32" textAnchor="middle" fill="#EFE547" fontFamily="Young Serif, serif" fontSize="14">XIII</text>
+      <g transform="translate(60, 90)">
+        <ellipse cx="0" cy="0" rx="28" ry="14" fill="none" stroke="#E8D9B8" strokeWidth="1" />
+        <circle cx="0" cy="0" r="8" fill="#C41E3A" />
+        <circle cx="0" cy="0" r="3" fill="#130507" />
+      </g>
+      <text x="60" y="162" textAnchor="middle" fill="#E8D9B8"
+            fontFamily="Unica One, sans-serif" fontSize="8" letterSpacing="2">LA PRUEBA</text>
+      <rect x="0" y="0" width="120" height="180" filter="url(#grunge)" opacity="0.3" />
+    </svg>
+  );
+}
+function DecoSeal() {
+  return (
+    <svg viewBox="0 0 100 100" className="deco-seal" aria-hidden="true">
+      <path d="M 50,5 Q 70,8 85,25 Q 98,50 85,75 Q 70,92 50,95 Q 30,92 15,75 Q 2,50 15,25 Q 30,8 50,5 Z"
+            fill="#7B0F0F" stroke="#3D1A1F" strokeWidth="1" />
+      <path d="M 50,15 Q 65,18 78,30 Q 88,50 78,70 Q 65,82 50,85 Q 35,82 22,70 Q 12,50 22,30 Q 35,18 50,15 Z"
+            fill="none" stroke="#C41E3A" strokeWidth="0.8" opacity="0.7" />
+      <text x="50" y="62" textAnchor="middle" fill="#1F0A0D"
+            fontFamily="Fraunces, serif" fontWeight="900" fontSize="34">§</text>
+      <circle cx="40" cy="40" r="14" fill="#130507" opacity="0.3" />
+    </svg>
+  );
+}
+function DecoChains({ alt }) {
+  return (
+    <svg viewBox="0 0 22 240" className={`deco-chains${alt ? " alt" : ""}`} aria-hidden="true" preserveAspectRatio="none">
+      <defs>
+        <pattern id={alt ? "chainB" : "chainA"} x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse">
+          <ellipse cx="7" cy="7" rx="5" ry="3" fill="none" stroke="#9A8670" strokeWidth="1" />
+        </pattern>
+      </defs>
+      <rect x="4" y="0" width="14" height="240" fill={`url(#${alt ? "chainB" : "chainA"})`} />
+    </svg>
+  );
+}
+function DecoCoin() {
+  return (
+    <svg viewBox="0 0 80 80" className="deco-coin" aria-hidden="true">
+      <circle cx="40" cy="40" r="36" fill="none" stroke="#8B2500" strokeWidth="2" />
+      <circle cx="40" cy="40" r="32" fill="none" stroke="#EFE547" strokeWidth="0.5" opacity="0.6" />
+      <text x="40" y="50" textAnchor="middle" fill="#EFE547" fontFamily="Fraunces, serif"
+            fontWeight="900" fontSize="28" opacity="0.85">※</text>
+      <circle cx="30" cy="30" r="8" fill="#130507" opacity="0.3" />
+      <circle cx="55" cy="55" r="5" fill="#130507" opacity="0.4" />
+    </svg>
+  );
+}
+function DecoStain() {
+  return (
+    <svg viewBox="0 0 300 200" className="deco-stain" aria-hidden="true">
+      <path d="M 50,30 Q 90,10 130,25 Q 180,20 220,50 Q 260,70 240,120 Q 220,160 170,170 Q 120,180 80,160 Q 40,140 30,100 Q 25,60 50,30 Z"
+            fill="#7B0F0F" />
+      <circle cx="270" cy="80" r="4" fill="#7B0F0F" />
+      <circle cx="285" cy="95" r="2" fill="#7B0F0F" />
+      <circle cx="20" cy="150" r="3" fill="#7B0F0F" />
+      <ellipse cx="240" cy="180" rx="8" ry="3" fill="#7B0F0F" transform="rotate(30 240 180)" />
+    </svg>
+  );
+}
+
+// Irregular hand-drawn border for cards — randomized per instance
+function IrregularBorder({ seed = 0 }) {
+  // seed tweaks offsets so every card looks slightly different
+  const p = (n) => (n + seed * 0.7) % 3 - 1.5; // pseudo-random in [-1.5, 1.5]
+  const d = `M ${2 + p(1)},${4 + p(2)} L ${298 + p(3)},${2 + p(4)} L ${296 + p(5)},${197 + p(6)} L ${4 + p(7)},${199 + p(8)} Z`;
+  return (
+    <svg viewBox="0 0 300 200" preserveAspectRatio="none" className="card-irregular-border" aria-hidden="true">
+      <path d={d} fill="none" stroke="#3D1A1F" strokeWidth="1" strokeLinejoin="miter" opacity="0.9" />
+    </svg>
+  );
+}
+
+function FlowerDivider({ wicked = false }) {
+  return (
+    <svg viewBox="0 0 200 20" className="flower-divider" aria-hidden="true">
+      <line x1="0" y1="10" x2="85" y2="10" stroke="#5A4A3D" strokeWidth="0.5" />
+      <g transform="translate(100,10)">
+        <path d="M 0,-4 L 2,-2 L 4,0 L 2,2 L 0,4 L -2,2 L -4,0 L -2,-2 Z"
+              fill={wicked ? "#7A4FD6" : "#EFE547"} opacity="0.7" />
+      </g>
+      <line x1="115" y1="10" x2="200" y2="10" stroke="#5A4A3D" strokeWidth="0.5" />
+    </svg>
+  );
+}
+
+// Flame SVG for the invoke button (background)
+function InvokeFlame() {
+  return (
+    <svg className="flame-bg" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M 10,55 Q 5,40 15,25 Q 20,35 25,20 Q 35,10 45,25 Q 60,5 75,20 Q 90,10 100,30 Q 115,10 130,25 Q 145,5 160,25 Q 175,15 185,30 Q 195,45 190,55 Z"
+            fill="none" stroke="#EFE547" strokeWidth="1" opacity="0.8" />
+      <path d="M 30,52 Q 28,42 35,32 Q 50,22 65,34 Q 80,24 95,36 Q 110,24 125,36 Q 140,26 155,36 Q 170,30 172,50 Z"
+            fill="none" stroke="#C41E3A" strokeWidth="0.7" opacity="0.6" />
+    </svg>
+  );
+}
+
+// Legacy sigil (used in some corners still)
+function Sigil({ size = 120, color = "#EFE547", className = "" }) {
   return (
     <svg viewBox="0 0 120 120" width={size} height={size} className={className}
          style={{ color, display: "block" }} aria-hidden="true">
       <circle cx="60" cy="60" r="55" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
-      <circle cx="60" cy="60" r="45" fill="none" stroke="currentColor" strokeWidth="0.3" opacity="0.3" />
-      <polygon points="60,20 95,80 25,80" fill="none" stroke="currentColor" strokeWidth="0.75" opacity="0.6" />
-      <polygon points="60,100 25,40 95,40" fill="none" stroke="currentColor" strokeWidth="0.75" opacity="0.6" />
-      <circle cx="60" cy="60" r="8" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.95" />
+      <polygon points="60,20 95,80 25,80" fill="none" stroke="currentColor" strokeWidth="0.8" opacity="0.7" />
+      <polygon points="60,100 25,40 95,40" fill="none" stroke="currentColor" strokeWidth="0.8" opacity="0.7" />
       <circle cx="60" cy="60" r="2" fill="currentColor" />
-      <text x="60" y="17" textAnchor="middle" fontFamily="Cinzel, serif" fontSize="8" fill="currentColor" opacity="0.8">※</text>
-      <text x="60" y="114" textAnchor="middle" fontFamily="Cinzel, serif" fontSize="8" fill="currentColor" opacity="0.8">※</text>
-      <text x="8" y="64" textAnchor="middle" fontFamily="Cinzel, serif" fontSize="8" fill="currentColor" opacity="0.8">†</text>
-      <text x="112" y="64" textAnchor="middle" fontFamily="Cinzel, serif" fontSize="8" fill="currentColor" opacity="0.8">†</text>
     </svg>
   );
 }
-function OrnateDivider({ color = C.ember, opacity = 0.75 }) {
-  return (
-    <svg viewBox="0 0 800 24" width="100%" height="20" aria-hidden="true"
-         style={{ color, display: "block", margin: "8px 0" }} preserveAspectRatio="none">
-      <line x1="0" y1="12" x2="340" y2="12" stroke="currentColor" strokeWidth="0.5" opacity={opacity * 0.4} />
-      <g transform="translate(400,12)">
-        <circle cx="-30" cy="0" r="1.2" fill="currentColor" opacity={opacity * 0.8} />
-        <circle cx="30"  cy="0" r="1.2" fill="currentColor" opacity={opacity * 0.8} />
-        <path d="M-22,0 L-11,-5 L0,0 L11,-5 L22,0 L11,5 L0,0 L-11,5 Z"
-              fill="none" stroke="currentColor" strokeWidth="0.75" opacity={opacity} />
-        <circle cx="0" cy="0" r="1.8" fill="currentColor" opacity={opacity} />
-      </g>
-      <line x1="460" y1="12" x2="800" y2="12" stroke="currentColor" strokeWidth="0.5" opacity={opacity * 0.4} />
-    </svg>
-  );
-}
-// Roman numerals for step headings
-const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII"];
+function OrnateDivider() { return <FlowerDivider />; }
+
+// Roman numerals for step headings (legacy consts, retained)
+const ROMAN = ["", "I", "II", "III", "IV", "V"];
 const ROMAN_PREFIX = ["", "PRIMVS", "SECVNDVS", "TERTIVS", "QVARTVS", "QVINTVS"];
 
 // ─────────────────────────── Atoms ───────────────────────────
@@ -460,10 +552,10 @@ function AppInner() {
                              selected={selectedFirmId === "custom"}
                              onClick={() => selectFirm("custom")} />
           )}
-          {filteredRegular.map(firm => (
+          {filteredRegular.map((firm, idx) => (
             <FirmCard key={firm.id} firm={firm}
                       selected={firm.id === selectedFirmId}
-                      onClick={() => selectFirm(firm.id)} />
+                      onClick={() => selectFirm(firm.id)} idx={idx} />
           ))}
         </div>
       </section>
@@ -501,7 +593,7 @@ function AppInner() {
       {planDraft && (
         <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 0" }} className="fg-fadein">
           <div style={{ display: "flex", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
-            <div style={{ width: 340, minWidth: 300, flexShrink: 0 }}>
+            <div style={{ width: 360, minWidth: 300, flexShrink: 0 }} className="notebook-strategy">
               <StepHead n={3} title={t("step_3_title")} subtitle={t("step_3_subtitle")} sub={t("step_3_hint")} />
 
               <div className="fg-panel" style={{ padding: 14, marginBottom: 12 }}>
@@ -580,10 +672,15 @@ function AppInner() {
                        data-testid="sim-nsims" />
               </div>
 
-              <button className={`fg-btn ${loading ? "loading" : ""}`}
+              <button className={`invoke-btn ${loading ? "loading" : ""}`}
                       onClick={handleRun} disabled={!planDraft || loading}
                       data-testid="btn-run">
-                {loading ? t("btn_running") : t("btn_run")}
+                <InvokeFlame />
+                <span style={{ position: "relative", zIndex: 2 }}>
+                  <span className="dagger">✦</span>
+                  {loading ? t("btn_running") : t("btn_run")}
+                  <span className="dagger">✦</span>
+                </span>
               </button>
 
               <button className="fg-btn-ghost"
@@ -636,9 +733,10 @@ function Header({ openWelcome, welcomeOpen }) {
       <div className="oracle-rail">
         <div className="oracle-rail-inner">
           <div className="oracle-rail-brand">
-            {t("app_title")}<span style={{ color: C.ash, margin: "0 10px", letterSpacing: 0 }}>·</span>
-            <span style={{ fontFamily: "var(--cormorant)", fontStyle: "italic", fontWeight: 400,
-                           color: C.boneDim, letterSpacing: 0.05, textTransform: "none", fontSize: 12 }}>
+            prop<span className="acc"> · </span>forge
+            <span style={{ color: C.ash, margin: "0 12px", letterSpacing: 0 }}>//</span>
+            <span style={{ fontFamily: "var(--young)", fontStyle: "italic", fontWeight: 400,
+                           color: C.boneDim, letterSpacing: 0.03, textTransform: "none", fontSize: 13 }}>
               monte carlo oracle
             </span>
           </div>
@@ -666,26 +764,31 @@ function HeroSection({ lang }) {
   const totalPlans = FIRM_DATABASE.reduce((a, f) => a + f.plans.length, 0);
   return (
     <section className="oracle-hero" data-testid="oracle-hero">
-      <div className="oracle-hero-inner">
-        <Sigil className="hero-sigil" size={120} color={C.ember} />
-        <div className="oracle-roman" style={{ marginBottom: 10 }}>✦ oracvlvm statisticvm ✦</div>
-        <h1 className="oracle-h1" data-testid="hero-title">{t("app_title")}</h1>
-        <div className="oracle-sub" style={{ marginTop: 12 }}>
-          <em>{t("hero_tagline")}</em>
-        </div>
-        <div className="hero-dot-row">※ ⚜ ※</div>
-        <OrnateDivider color={C.ember} opacity={0.6} />
-        <blockquote className="hero-quote">
-          "{t("hero_quote")}"
-          <span className="hero-quote-cite">— {t("hero_quote_cite")}</span>
-        </blockquote>
-        <div className="hero-meta">
-          <span>{totalFirms} {t("hero_firms")}</span>
-          <span style={{ color: C.ember }}>·</span>
-          <span>{totalPlans} {t("hero_plans")}</span>
-          <span style={{ color: C.ember }}>·</span>
-          <span>{lang === "es" ? "client-side ritual" : "client-side rite"}</span>
-        </div>
+      {/* Physical decorative SVG objects */}
+      <DecoTarot />
+      <DecoSeal />
+      <DecoChains />
+      <DecoChains alt />
+      <DecoCoin />
+      <DecoStain />
+
+      <h1 className="oracle-h1" data-testid="hero-title" style={{ position: "relative", zIndex: 4 }}>
+        <span className="hero-prop">PROP</span>
+        <span className="hero-forge">FORGE</span>
+      </h1>
+      <div className="hero-latin">oracvlvm statisticvm</div>
+
+      <blockquote className="hero-quote">
+        {t("hero_quote")}
+        <span className="hero-quote-cite">{t("hero_quote_author")}</span>
+      </blockquote>
+
+      <div className="hero-meta">
+        <span>{totalFirms} {t("hero_firms")}</span>
+        <span className="dot">·</span>
+        <span>{totalPlans} {t("hero_plans")}</span>
+        <span className="dot">·</span>
+        <span>{lang === "es" ? "client-side" : "client-side"}</span>
       </div>
     </section>
   );
@@ -780,68 +883,63 @@ function Footer() {
 }
 
 function StepHead({ n, title, sub, subtitle }) {
-  const roman = ROMAN_PREFIX[n] ? `${ROMAN_PREFIX[n]} · ${ROMAN[n]}` : `${ROMAN[n]}`;
+  const label = ROMAN_PREFIX[n] ? `${ROMAN_PREFIX[n]} · ${ROMAN[n]}` : `${ROMAN[n]}`;
+  const watermark = String(n).padStart(2, "0");
   return (
-    <div style={{ marginBottom: 18, marginTop: 8 }}>
-      <div className="oracle-roman" style={{ marginBottom: 6 }}>✦ {roman}</div>
-      <h2 className="oracle-h2" style={{ fontSize: 24, marginBottom: 6 }}>{title}</h2>
-      {subtitle && (
-        <div className="oracle-sub" style={{ color: C.ash, fontSize: 13, marginBottom: 4 }}>
-          <em>{subtitle}</em>
-        </div>
-      )}
-      {sub && (
-        <div style={{ color: C.boneDim, fontFamily: "var(--cormorant)", fontStyle: "italic",
-                      fontSize: 14, marginTop: 6, letterSpacing: 0.02, lineHeight: 1.5 }}>
-          {sub}
-        </div>
-      )}
-      <OrnateDivider color={C.ember} opacity={0.5} />
+    <div style={{ position: "relative", marginBottom: 32, marginTop: 20, minHeight: 120 }}>
+      <div className="step-watermark" aria-hidden="true">{watermark}</div>
+      <div className="step-head-v2">
+        <div className="kicker">{label}</div>
+        <h2 className="title">{title}</h2>
+        {subtitle && <div className="title-latin">{subtitle}</div>}
+        {sub && <div className="hint">{sub}</div>}
+      </div>
     </div>
   );
 }
 
-// ─────────────────────────── Firm / Plan cards ───────────────────────────
+// ─────────────────────────── Firm / Plan cards (v2 — rotated, irregular borders) ───────────────────────────
 function CustomFirstCard({ firm, selected, onClick }) {
   const { t } = useT();
   return (
     <div onClick={onClick} data-testid="firm-custom"
-         className={`fg-panel fg-card custom-card ${selected ? "selected" : ""}`}
-         style={{ padding: 24, display: "flex", flexDirection: "column", gap: 12,
-                  alignItems: "flex-start", justifyContent: "space-between" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <svg viewBox="0 0 64 64" width="56" height="56" aria-hidden="true"
-             style={{ color: C.ember, display: "block", flexShrink: 0, opacity: 0.85 }}>
-          {/* Anvil/hammer custom sigil */}
-          <circle cx="32" cy="32" r="30" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
+         className={`fg-card custom-card ${selected ? "selected" : ""}`}
+         style={{ padding: 28, display: "flex", flexDirection: "column", gap: 14,
+                  justifyContent: "space-between", position: "relative" }}>
+      <IrregularBorder seed={99} />
+      <div style={{ display: "flex", alignItems: "center", gap: 16, position: "relative", zIndex: 2 }}>
+        <svg viewBox="0 0 64 64" width="58" height="58" aria-hidden="true"
+             style={{ color: C.ember, display: "block", flexShrink: 0, opacity: 0.9 }}>
           <path d="M18,38 L18,44 L46,44 L46,38 Q46,34 42,34 L22,34 Q18,34 18,38 Z"
-                fill="none" stroke="currentColor" strokeWidth="1.25" />
-          <path d="M12,34 L52,34" stroke="currentColor" strokeWidth="0.75" opacity="0.6" />
-          <path d="M32,22 L32,34 M28,26 L36,26" stroke="currentColor" strokeWidth="1" opacity="0.9" />
-          <text x="32" y="20" textAnchor="middle" fontFamily="Cinzel" fontSize="6"
-                fill="currentColor" opacity="0.7">※</text>
+                fill="none" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M12,34 L52,34" stroke="currentColor" strokeWidth="0.8" opacity="0.6" />
+          <path d="M32,22 L32,34 M28,26 L36,26" stroke="currentColor" strokeWidth="1" />
+          <circle cx="32" cy="20" r="2" fill="currentColor" />
         </svg>
         <div>
-          <div className="oracle-roman" style={{ marginBottom: 4 }}>✦ vocatio propria</div>
-          <div style={{ fontFamily: "var(--cinzel)", fontWeight: 900, color: C.bone,
-                        fontSize: 18, letterSpacing: 0.18, textTransform: "uppercase" }}>
+          <div style={{ fontFamily: "var(--unica)", fontSize: 11, letterSpacing: 0.35,
+                        color: C.flame, marginBottom: 6 }}>
+            · vocatio propria
+          </div>
+          <div style={{ fontFamily: "var(--fraunces)", fontVariationSettings: "'opsz' 144, 'WONK' 1",
+                        fontWeight: 900, color: C.bone, fontSize: 22, letterSpacing: "-0.02em",
+                        lineHeight: 0.95 }}>
             {t("custom_card_title")}
           </div>
         </div>
       </div>
-      <div style={{ fontFamily: "var(--cormorant)", fontStyle: "italic", color: C.boneDim,
-                    fontSize: 14, lineHeight: 1.6, maxWidth: 480 }}>
+      <div style={{ fontFamily: "var(--young)", fontStyle: "italic", color: C.boneDim,
+                    fontSize: 15, lineHeight: 1.55, maxWidth: 520, position: "relative", zIndex: 2 }}>
         {t("custom_card_desc")}
       </div>
-      <div style={{ marginTop: 6, color: C.ember, fontFamily: "var(--cinzel)",
-                    fontWeight: 600, fontSize: 11, letterSpacing: 0.35, textTransform: "uppercase" }}>
+      <div style={{ color: C.ember, fontFamily: "var(--unica)", fontSize: 12,
+                    letterSpacing: 0.35, textTransform: "uppercase", position: "relative", zIndex: 2 }}>
         → {t("custom_card_cta")}
       </div>
     </div>
   );
 }
 
-// Difficulty estimate from firm plans → 1..3 flames
 function estimateDifficulty(firm) {
   let score = 1;
   const hasIntraday = firm.plans.some(p => p.ddType === "trailing_intraday");
@@ -859,43 +957,48 @@ function estimateDifficulty(firm) {
   return Math.min(3, Math.max(1, Math.round(score / 2)));
 }
 
-function FirmCard({ firm, selected, onClick }) {
+function FirmCard({ firm, selected, onClick, idx }) {
   const { t } = useT();
   const hasTwoPhase = firm.plans.some(p => p.phases === 2);
   const ddTypes = [...new Set(firm.plans.map(p => p.ddType))];
   const ddTag = (type) => ({
-    trailing_eod: "TRAILING·EOD", trailing_intraday: "TRAILING·INTRADAY", static: "STATIC"
+    trailing_eod: "trailing·eod", trailing_intraday: "trailing·intraday", static: "static"
   }[type] || type);
   const ddCol = (type) => ({
     trailing_eod: C.ember, trailing_intraday: C.flame, static: C.ash
   }[type] || C.ash);
   const stars = estimateDifficulty(firm);
   return (
-    <div className={`fg-panel fg-card ${selected ? "selected" : ""}`}
+    <div className={`fg-card ${selected ? "selected" : ""}`}
          onClick={onClick} data-testid={`firm-${firm.id}`}
-         style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12, minHeight: 150 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+         style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12, minHeight: 150, position: "relative" }}>
+      <IrregularBorder seed={idx || 0} />
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "flex-start",
+                    justifyContent: "space-between", gap: 8 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontFamily: "var(--cinzel)", fontWeight: 600, color: C.bone, fontSize: 14,
-                        letterSpacing: 0.08, textTransform: "uppercase",
+          <div style={{ fontFamily: "var(--fraunces)", fontVariationSettings: "'opsz' 144, 'WONK' 1",
+                        fontWeight: 900, color: C.bone, fontSize: 18, letterSpacing: "-0.01em",
+                        lineHeight: 0.95,
                         whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {firm.name}
           </div>
-          <div className="difficulty-label" style={{ marginTop: 4 }}>
-            <em>{firm.subtitle}</em>
+          <div style={{ fontFamily: "var(--young)", fontStyle: "italic", color: C.ash,
+                        fontSize: 13, marginTop: 4 }}>
+            {firm.subtitle}
           </div>
         </div>
         <Tag color={firm.badgeColor}>{firm.badge}</Tag>
       </div>
-      <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between",
+      <div style={{ marginTop: "auto", position: "relative", zIndex: 2,
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
                     gap: 10, flexWrap: "wrap" }}>
         <span className="fg-rating" data-testid={`firm-${firm.id}-difficulty`}>
           {"✦".repeat(stars)}<span className="dim">{"✦".repeat(3 - stars)}</span>
         </span>
         <div style={{ display: "flex", gap: 10, fontSize: 10, letterSpacing: 0.15,
-                      fontFamily: "var(--mono)" }}>
+                      fontFamily: "var(--unica)", textTransform: "uppercase" }}>
           {ddTypes.map(ty => (
-            <span key={ty} style={{ color: ddCol(ty) }}>◆ {ddTag(ty)}</span>
+            <span key={ty} style={{ color: ddCol(ty) }}>{ddTag(ty)}</span>
           ))}
           {firm.allowsOvernight && <span style={{ color: C.boneDim }}>{t("overnight_badge")}</span>}
           {hasTwoPhase && <span style={{ color: C.flame }}>{t("two_phase_badge")}</span>}
@@ -1257,50 +1360,83 @@ function ResultsDashboard({ results, plan }) {
   if (r.pTimeout > 0) distData.push({ name: "TIMEOUT", pct: +(r.pTimeout * 100).toFixed(2), fill: C.flame });
   if (r.pDLL     > 0) distData.push({ name: "DLL",     pct: +(r.pDLL     * 100).toFixed(2), fill: C.bloodDark });
 
-  // Radial layout — 3x3 grid with 6 peripheral KPIs + center
+  // Asymmetric constellation: P(PASS) center + 6 peripheral KPIs
   const kpiTL = { label: t("kpi_mean_days"),
                   value: r.nPass > 0 ? `${Math.round(r.meanPass)}d` : "—",
                   sub:   r.nPass > 0 ? t("kpi_mean_days_sub_ok", { x: Math.round(r.medianPass) }) : t("kpi_mean_days_sub_none"),
-                  color: C.bone, testId: "kpi-meanpass" };
-  const kpiTC = { label: fourth.label, value: fourth.value, sub: fourth.sub, color: fourth.color, testId: "kpi-fourth" };
-  const kpiTR = { label: t("kpi_p_dd"), value: fmtPct(r.pDD), sub: t("kpi_p_dd_sub"), color: C.blood, testId: "kpi-pdd" };
-  const kpiBL = { label: t("kpi_bankroll"),
+                  color: C.bone, testId: "kpi-meanpass", pos: "p-tl" };
+  const kpiTR = { label: t("kpi_p_dd"), value: fmtPct(r.pDD), sub: t("kpi_p_dd_sub"),
+                  color: C.blood, testId: "kpi-pdd", pos: "p-tr" };
+  const kpiML = { label: t("kpi_bankroll"),
                   value: r.passEssentiallyZero ? "—" : fmtMoney(r.br95),
                   sub:   r.passEssentiallyZero ? t("kpi_bankroll_sub_zero") : t("kpi_bankroll_sub_ok", { x: fmtInt(r.n95) }),
-                  color: C.ember, testId: "kpi-br95" };
-  const kpiBC = { label: t("kpi_p90_days"),
-                  value: r.nPass > 0 ? `${Math.round(r.p90Pass)}d` : "—",
-                  sub: t("kpi_p90_days_sub"), color: C.ember, testId: "kpi-p90pass" };
-  const kpiBR = { label: t("kpi_ev"),
+                  color: C.ember, testId: "kpi-br95", pos: "p-ml" };
+  const kpiMR = { label: t("kpi_ev"),
                   value: (r.ev >= 0 ? "+" : "-") + fmtMoney(Math.abs(r.ev)),
                   sub: t("kpi_ev_sub", { x: fmtMoney(r.avgCost) }),
-                  color: evColor, testId: "kpi-ev" };
+                  color: evColor, testId: "kpi-ev", pos: "p-mr" };
+  const kpiBL = { label: t("kpi_p90_days"),
+                  value: r.nPass > 0 ? `${Math.round(r.p90Pass)}d` : "—",
+                  sub: t("kpi_p90_days_sub"), color: C.ember, testId: "kpi-p90pass", pos: "p-bl" };
+  const kpiBC = { label: fourth.label, value: fourth.value, sub: fourth.sub,
+                  color: fourth.color, testId: "kpi-fourth", pos: "p-bc" };
+
+  // Progress bar width: how far above break-even (ruinaMin)
+  const beProgress = r.ruinaMin > 0
+    ? Math.min(100, Math.max(0, (r.pPass / Math.max(r.ruinaMin * 2, 0.0001)) * 100))
+    : (r.pPass > 0 ? 100 : 0);
 
   return (
     <div data-testid="results-dashboard">
       <div className="oracle-chapter">
-        <div className="tag">✦ {t("reveal_tag")} ✦</div>
+        <div className="tag">✦ {t("reveal_tag")}</div>
         <div className="title">{t("reveal_title")}</div>
       </div>
 
-      <div className="oracle-revelation kpi-stagger" data-testid="oracle-revelation">
-        <OracleKpi {...kpiTL} />
-        <OracleKpi {...kpiTC} />
-        <OracleKpi {...kpiTR} />
-        <OracleKpi {...kpiBL} />
-        <div className={`oracle-kpi-center ${passing ? "passing" : "failing"}`} data-testid="kpi-ppass">
-          <div className="lbl">{t("kpi_p_pass")}</div>
-          <div className="big" style={{ color: passColor }}>{fmtPct(r.pPass)}</div>
-          <div className="sub">
-            <em>{t("kpi_p_pass_sub", { x: (r.ruinaMin * 100).toFixed(1) })}</em>
+      <div className="oracle-revelation-v2 kpi-stagger" data-testid="oracle-revelation">
+        {/* Constellation connecting lines */}
+        <svg className="revel-constellation" viewBox="0 0 1000 580" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="500" y1="244" x2="90"  y2="60"  stroke={C.ember} strokeWidth="0.5" />
+          <line x1="500" y1="244" x2="920" y2="80"  stroke={C.ember} strokeWidth="0.5" />
+          <line x1="500" y1="244" x2="920" y2="286" stroke={C.ember} strokeWidth="0.5" />
+          <line x1="500" y1="244" x2="200" y2="520" stroke={C.ember} strokeWidth="0.5" />
+          <line x1="500" y1="244" x2="500" y2="560" stroke={C.ember} strokeWidth="0.5" />
+        </svg>
+
+        {/* Peripheral KPIs */}
+        {[kpiTL, kpiTR, kpiML, kpiMR, kpiBL, kpiBC].map(k => (
+          <div key={k.testId} className={`revel-kpi ${k.pos}`} data-testid={k.testId}>
+            <div className="lbl">{k.label}</div>
+            <div className="val" style={{ color: k.color }}>{k.value}</div>
+            {k.sub && <div className="sub">{k.sub}</div>}
           </div>
+        ))}
+
+        {/* Hand-drawn center frame + P(PASS) */}
+        <div className={`revel-center ${passing ? "passing" : "failing"}`} data-testid="kpi-ppass">
+          <svg className="revel-center-frame" viewBox="0 0 340 260" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M 16,8 Q 170,2 324,10 Q 332,130 326,254 Q 170,260 14,252 Q 10,130 16,8 Z"
+                  fill="none" stroke={passing ? C.ember : C.blood} strokeWidth="1.2" opacity="0.85" />
+            <path d="M 22,16 Q 170,12 320,18 Q 326,130 320,244 Q 170,250 22,242 Q 18,130 22,16 Z"
+                  fill="none" stroke={passing ? C.ember : C.blood} strokeWidth="0.4" opacity="0.55"
+                  strokeDasharray="3 4" />
+          </svg>
+          <div className="lbl">{t("kpi_p_pass")}</div>
+          <div className="big-wrap">
+            <span className="big">{(r.pPass * 100).toFixed(1)}</span>
+            <span className="pct-sm" style={{ color: passing ? C.ember : C.blood }}>%</span>
+          </div>
+          <div className="progress-bar">
+            <div className="fill" style={{ width: `${beProgress}%`,
+                                            background: passing ? C.ember : C.blood,
+                                            boxShadow: passing ? "0 0 6px #EFE547" : "0 0 6px #C41E3A" }} />
+          </div>
+          <div className="sub">{t("kpi_p_pass_sub", { x: (r.ruinaMin * 100).toFixed(1) })}</div>
         </div>
-        <OracleKpi {...kpiBC} />
-        <OracleKpi {...kpiBR} />
       </div>
 
       <div className="oracle-chapter">
-        <div className="tag">‡ {t("chart_chapter")} ‡</div>
+        <div className="tag">‡ {t("chart_chapter")}</div>
         <div className="title">{t("chart_chapter_title")}</div>
       </div>
 
@@ -1352,7 +1488,7 @@ function ResultsDashboard({ results, plan }) {
       </div>
 
       <div className="oracle-chapter">
-        <div className="tag">§ {t("ledger_chapter")} §</div>
+        <div className="tag">§ {t("ledger_chapter")}</div>
         <div className="title">{t("ledger_chapter_title")}</div>
       </div>
 

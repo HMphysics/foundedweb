@@ -1,0 +1,50 @@
+{
+  "summary": "Frontend-only verification of the ORACLE/PROP·FORGE v2 radical redesign. All 27 review checkpoints verified on the live preview URL. Hero (PROP/FORGE stacked, 6 deco SVGs), step watermarks (320px, opacity 0.25), asymmetric 6-KPI constellation with center P(PASS) frame and 5 connecting SVG lines, invoke-btn with flame SVG (opacity 0.55) + dagger ✦ decorations, firm-custom 2x wider with IrregularBorder SVG, regular firm cards rotated randomly (-1° to +1°) with hand-drawn SVG borders and arterial-red difficulty flames, Fraunces+WONK variation loaded, ES↔EN language toggle, CSV modal flow, compare rack, exports, all 3 charts. Zero JS console errors.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_4.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "App.js is now ~1850 lines and holds many inline sub-components (DecoTarot, DecoSeal, DecoChains, DecoCoin, DecoStain, IrregularBorder, InvokeFlame, HeroSection, StepHead, ResultsDashboard, CompareRack, CsvModal, AccountEditor). Splitting into /src/components/* would ease maintenance (non-blocking).",
+    "App.css is a single large stylesheet; breaking into hero.css / revelation.css / notebook.css modules would improve cohesion (non-blocking).",
+    "html-to-image may still emit a benign CORS warning when reading Google Fonts @font-face rules during PNG export — pass skipFonts:true or fontEmbedCSS to silence (non-blocking, export still works)."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (client-side only)", "frontend": "100%" },
+  "seed_data_creation": "N/A",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Detailed verifications from this run: (1) hero-title computed fontFamily='Fraunces, \"Young Serif\", Georgia, serif' with fontVariationSettings='\"SOFT\" 100, \"WONK\" 1, \"opsz\" 144'. (2) Hero contains 6 deco SVGs with classes deco-tarot/deco-seal/deco-chains/deco-chains alt/deco-coin/deco-stain. (3) step-watermark computed style: fontSize=320px, opacity=0.25, color=rgb(61,26,31), position=absolute. (4) Firm rotations verified: apex_eod transform matrix rotation ≈ -0.4°, apex_intraday ≈ -0.8°, topstep ≈ +0.6°. firm-custom width=617px vs regular firm 304px (~2.03x). (5) Invoke button: className='invoke-btn', 0px border, cursor=pointer, contains SVG flame with opacity 0.55, inner text '✦invocar el oráculo✦' (ES) / '✦summon the oracle✦' (EN), dagger chars present. (6) After running sim: oracle-revelation-v2 container renders with .revel-center-frame SVG, .revel-constellation with 5 connecting lines, and 6 peripheral KPIs at absolute positions: kpi-meanpass top-left, kpi-pdd top-right, kpi-br95 mid-left, kpi-ev mid-right, kpi-p90pass bottom-left, kpi-fourth bottom-center. kpi-ppass is center with P·PASS 53.6%. Each peripheral KPI has a slight translateY and individual rotations. (7) 0 JS console errors through firm→plan→ignite→compare→csv→lang-toggle flow.",
+  "test_results": {
+    "passed": [
+      "Hero PROP/FORGE stacked, monte carlo oracle top rail visible (screenshot confirmed)",
+      "6 decorative SVGs (tarot/seal/chains x2/coin/stain) rendered in oracle-hero",
+      "Fraunces with WONK variation axis actually loaded and applied on hero-title",
+      "Welcome block opens/closes via btn-welcome-close + btn-show-help",
+      "ES↔EN language toggle changes btn-run text between 'invocar el oráculo' and 'summon the oracle' (verified)",
+      "Step 1 watermark '01' at 320px / opacity 0.25 with PRIMVS·I kicker and latin subtitle",
+      "firm-custom card: 617px wide (2x of 304px regular), IrregularBorder SVG visible",
+      "Regular firm cards: hand-drawn IrregularBorder SVG + random rotation -1°..+1° + arterial-red ✦ difficulty flames",
+      "Clicking firm-apex_eod opens Step 2 with watermark '02' and plan-grid (5 plan cards)",
+      "Selecting plan-apex_eod_25k opens account-summary block + notebook-strategy panel",
+      ".notebook-strategy class present with yellowish paper gradient background",
+      "invoke-btn: class 'invoke-btn', no border, cursor pointer, flame SVG at opacity 0.55, daggers ✦ on each side, correct localized text",
+      "Clicking btn-run triggers Monte Carlo and oracle-revelation renders within timeout",
+      "Results v2: oracle-revelation-v2 + revel-center-frame + .revel-constellation (5 SVG lines)",
+      "P(PASS) center card with Fraunces font family, huge 53.6% display",
+      "All 6 peripheral KPIs at absolute positions: kpi-meanpass(TL), kpi-pdd(TR), kpi-br95(ML), kpi-ev(MR), kpi-p90pass(BL), kpi-fourth(BC)",
+      "3 charts: chart-dist, chart-pass-hist, chart-fail-hist all render with sulphur yellow + arterial red palette",
+      "stats-row ledger present",
+      "tip-mae tooltip present (sample)",
+      "Compare rack: btn-add-compare adds plan -> compare-slot-0 renders",
+      "Export buttons btn-export-png + btn-export-json present",
+      "CSV modal flow: btn-open-csv → csv-modal → btn-csv-sample → btn-csv-apply visible → btn-csv-close closes",
+      "Zero JavaScript console errors captured during full flow"
+    ]
+  },
+  "rca of the issue": "N/A — no bugs found. Redesign v2 is stable."
+}
