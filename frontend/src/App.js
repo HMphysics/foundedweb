@@ -355,9 +355,12 @@ function AppInner() {
           {!planDraft && (
             <div className="oracle-empty" data-testid="strategy-empty">
               {t("strategy_empty")}
-              <div style={{ marginTop: 16 }}>
-                <button className="btn-secondary" onClick={() => setActiveTab("chamber")}>
-                  ← {t("tab_01")}
+              <div className="ignite-block-hint" data-testid="ignite-hint" style={{ marginTop: 16, justifyContent: "center" }}>
+                <span className="hint-icon">※</span>
+                <span>{t("hint_no_chamber")}</span>
+                <button className="hint-link" onClick={() => setActiveTab("chamber")}
+                        data-testid="ignite-hint-link">
+                  → {t("tab_01")}
                 </button>
               </div>
             </div>

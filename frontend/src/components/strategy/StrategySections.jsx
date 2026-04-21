@@ -106,7 +106,7 @@ export function BootstrapInput({ strategy, setStrategy }) {
         style={{ minHeight: 140, fontFamily: "var(--mono)", fontSize: 12, lineHeight: 1.5 }}
         placeholder={t("bootstrap_placeholder")}
         value={raw}
-        onChange={(e) => setRaw(e.target.value)}
+        onChange={(e) => { setRaw(e.target.value); parse(e.target.value); }}
         data-testid="bootstrap-textarea"
       />
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
