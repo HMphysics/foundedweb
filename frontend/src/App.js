@@ -10,14 +10,14 @@ import { runMonteCarlo } from "./monteCarlo";
 import { parseCsv, detectColumns, extractColumn, calibrateStrategy } from "./csvCalibrate";
 import { makeT, detectBrowserLang, TOOLTIPS } from "./i18n";
 
-// ─────────────────────────── THE ORACLE v2 palette ───────────────────────────
+// ─────────────────────────── Archive Noir palette v3 ───────────────────────────
 const C = {
-  bg: "#130507", panel: "#1F0A0D", elev: "#2B1013",
-  border: "#3D1A1F", borderHot: "#5A4A3D",
-  ember: "#EFE547", flame: "#C41E3A", blood: "#C41E3A", bloodDark: "#8B2500",
-  char: "#1F0A0D", ash: "#9A8670",
-  bone: "#E8D9B8", boneDim: "#E8D9B8",
-  wicked: "#7A4FD6", mercury: "#A8B0B5", rust: "#8B2500",
+  bg: "#0B0F10", panel: "#12171A", elev: "#1A2025",
+  border: "#2A3238", borderHot: "#3D4850",
+  ember: "#B8A478", flame: "#DC4A3D", blood: "#DC4A3D", bloodDark: "#7A2E1F",
+  char: "#12171A", ash: "#5C6670",
+  bone: "#D4CDB8", boneDim: "#9AA39C",
+  steel: "#7D8F9A", brass: "#B8A478", verdigris: "#5B7A6F",
 };
 
 const LangCtx = createContext({ lang: "en", t: makeT("en"), setLang: () => {} });
@@ -63,132 +63,32 @@ function downloadJSON(filename, obj) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// ─────────────────────────── v2 DECORATIVE SVG OBJECTS ───────────────────────────
-function DecoTarot() {
+// ─────────────────────────── Minimal decorations (v3 — archive noir) ───────────────────────────
+// Single small wax seal for header.
+function HeaderSeal() {
   return (
-    <svg viewBox="0 0 120 180" className="deco-tarot" aria-hidden="true">
-      <defs>
-        <filter id="grunge">
-          <feTurbulence baseFrequency="0.7" numOctaves="2" />
-          <feColorMatrix values="0 0 0 0 0.8   0 0 0 0 0.5   0 0 0 0 0.2   0 0 0 0.4 0" />
-        </filter>
-      </defs>
-      <rect x="4" y="4" width="112" height="172" rx="2" fill="#1F0A0D" stroke="#8B2500" strokeWidth="1" />
-      <rect x="8" y="8" width="104" height="164" rx="1" fill="none" stroke="#EFE547" strokeWidth="0.5" opacity="0.6" />
-      <text x="60" y="32" textAnchor="middle" fill="#EFE547" fontFamily="Young Serif, serif" fontSize="14">XIII</text>
-      <g transform="translate(60, 90)">
-        <ellipse cx="0" cy="0" rx="28" ry="14" fill="none" stroke="#E8D9B8" strokeWidth="1" />
-        <circle cx="0" cy="0" r="8" fill="#C41E3A" />
-        <circle cx="0" cy="0" r="3" fill="#130507" />
-      </g>
-      <text x="60" y="162" textAnchor="middle" fill="#E8D9B8"
-            fontFamily="Unica One, sans-serif" fontSize="8" letterSpacing="2">LA PRUEBA</text>
-      <rect x="0" y="0" width="120" height="180" filter="url(#grunge)" opacity="0.3" />
-    </svg>
-  );
-}
-function DecoSeal() {
-  return (
-    <svg viewBox="0 0 100 100" className="deco-seal" aria-hidden="true">
-      <path d="M 50,5 Q 70,8 85,25 Q 98,50 85,75 Q 70,92 50,95 Q 30,92 15,75 Q 2,50 15,25 Q 30,8 50,5 Z"
-            fill="#7B0F0F" stroke="#3D1A1F" strokeWidth="1" />
-      <path d="M 50,15 Q 65,18 78,30 Q 88,50 78,70 Q 65,82 50,85 Q 35,82 22,70 Q 12,50 22,30 Q 35,18 50,15 Z"
-            fill="none" stroke="#C41E3A" strokeWidth="0.8" opacity="0.7" />
-      <text x="50" y="62" textAnchor="middle" fill="#1F0A0D"
-            fontFamily="Fraunces, serif" fontWeight="900" fontSize="34">§</text>
-      <circle cx="40" cy="40" r="14" fill="#130507" opacity="0.3" />
-    </svg>
-  );
-}
-function DecoChains({ alt }) {
-  return (
-    <svg viewBox="0 0 22 240" className={`deco-chains${alt ? " alt" : ""}`} aria-hidden="true" preserveAspectRatio="none">
-      <defs>
-        <pattern id={alt ? "chainB" : "chainA"} x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse">
-          <ellipse cx="7" cy="7" rx="5" ry="3" fill="none" stroke="#9A8670" strokeWidth="1" />
-        </pattern>
-      </defs>
-      <rect x="4" y="0" width="14" height="240" fill={`url(#${alt ? "chainB" : "chainA"})`} />
-    </svg>
-  );
-}
-function DecoCoin() {
-  return (
-    <svg viewBox="0 0 80 80" className="deco-coin" aria-hidden="true">
-      <circle cx="40" cy="40" r="36" fill="none" stroke="#8B2500" strokeWidth="2" />
-      <circle cx="40" cy="40" r="32" fill="none" stroke="#EFE547" strokeWidth="0.5" opacity="0.6" />
-      <text x="40" y="50" textAnchor="middle" fill="#EFE547" fontFamily="Fraunces, serif"
-            fontWeight="900" fontSize="28" opacity="0.85">※</text>
-      <circle cx="30" cy="30" r="8" fill="#130507" opacity="0.3" />
-      <circle cx="55" cy="55" r="5" fill="#130507" opacity="0.4" />
-    </svg>
-  );
-}
-function DecoStain() {
-  return (
-    <svg viewBox="0 0 300 200" className="deco-stain" aria-hidden="true">
-      <path d="M 50,30 Q 90,10 130,25 Q 180,20 220,50 Q 260,70 240,120 Q 220,160 170,170 Q 120,180 80,160 Q 40,140 30,100 Q 25,60 50,30 Z"
-            fill="#7B0F0F" />
-      <circle cx="270" cy="80" r="4" fill="#7B0F0F" />
-      <circle cx="285" cy="95" r="2" fill="#7B0F0F" />
-      <circle cx="20" cy="150" r="3" fill="#7B0F0F" />
-      <ellipse cx="240" cy="180" rx="8" ry="3" fill="#7B0F0F" transform="rotate(30 240 180)" />
+    <svg viewBox="0 0 34 34" className="pf-header-seal" aria-hidden="true">
+      <circle cx="17" cy="17" r="15" fill="#7A2E1F" />
+      <circle cx="17" cy="17" r="12" fill="none" stroke="#DC4A3D" strokeWidth="0.6" opacity="0.75" />
+      <text x="17" y="22" textAnchor="middle" fill="#0B0F10"
+            fontFamily="Fraunces, serif" fontWeight="900" fontSize="14">§</text>
     </svg>
   );
 }
 
-// Irregular hand-drawn border for cards — randomized per instance
-function IrregularBorder({ seed = 0 }) {
-  // seed tweaks offsets so every card looks slightly different
-  const p = (n) => (n + seed * 0.7) % 3 - 1.5; // pseudo-random in [-1.5, 1.5]
-  const d = `M ${2 + p(1)},${4 + p(2)} L ${298 + p(3)},${2 + p(4)} L ${296 + p(5)},${197 + p(6)} L ${4 + p(7)},${199 + p(8)} Z`;
-  return (
-    <svg viewBox="0 0 300 200" preserveAspectRatio="none" className="card-irregular-border" aria-hidden="true">
-      <path d={d} fill="none" stroke="#3D1A1F" strokeWidth="1" strokeLinejoin="miter" opacity="0.9" />
-    </svg>
-  );
-}
+// Hand-drawn borders, watermark sigil and flame removed — intentionally absent.
+// Legacy names retained as no-ops where referenced internally.
+function IrregularBorder() { return null; }
+function FlowerDivider() { return null; }
+function DecoTarot()   { return null; }
+function DecoSeal()    { return null; }
+function DecoChains()  { return null; }
+function DecoCoin()    { return null; }
+function DecoStain()   { return null; }
+function InvokeFlame() { return null; }
+function Sigil()       { return null; }
+function OrnateDivider() { return null; }
 
-function FlowerDivider({ wicked = false }) {
-  return (
-    <svg viewBox="0 0 200 20" className="flower-divider" aria-hidden="true">
-      <line x1="0" y1="10" x2="85" y2="10" stroke="#5A4A3D" strokeWidth="0.5" />
-      <g transform="translate(100,10)">
-        <path d="M 0,-4 L 2,-2 L 4,0 L 2,2 L 0,4 L -2,2 L -4,0 L -2,-2 Z"
-              fill={wicked ? "#7A4FD6" : "#EFE547"} opacity="0.7" />
-      </g>
-      <line x1="115" y1="10" x2="200" y2="10" stroke="#5A4A3D" strokeWidth="0.5" />
-    </svg>
-  );
-}
-
-// Flame SVG for the invoke button (background)
-function InvokeFlame() {
-  return (
-    <svg className="flame-bg" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M 10,55 Q 5,40 15,25 Q 20,35 25,20 Q 35,10 45,25 Q 60,5 75,20 Q 90,10 100,30 Q 115,10 130,25 Q 145,5 160,25 Q 175,15 185,30 Q 195,45 190,55 Z"
-            fill="none" stroke="#EFE547" strokeWidth="1" opacity="0.8" />
-      <path d="M 30,52 Q 28,42 35,32 Q 50,22 65,34 Q 80,24 95,36 Q 110,24 125,36 Q 140,26 155,36 Q 170,30 172,50 Z"
-            fill="none" stroke="#C41E3A" strokeWidth="0.7" opacity="0.6" />
-    </svg>
-  );
-}
-
-// Legacy sigil (used in some corners still)
-function Sigil({ size = 120, color = "#EFE547", className = "" }) {
-  return (
-    <svg viewBox="0 0 120 120" width={size} height={size} className={className}
-         style={{ color, display: "block" }} aria-hidden="true">
-      <circle cx="60" cy="60" r="55" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
-      <polygon points="60,20 95,80 25,80" fill="none" stroke="currentColor" strokeWidth="0.8" opacity="0.7" />
-      <polygon points="60,100 25,40 95,40" fill="none" stroke="currentColor" strokeWidth="0.8" opacity="0.7" />
-      <circle cx="60" cy="60" r="2" fill="currentColor" />
-    </svg>
-  );
-}
-function OrnateDivider() { return <FlowerDivider />; }
-
-// Roman numerals for step headings (legacy consts, retained)
 const ROMAN = ["", "I", "II", "III", "IV", "V"];
 const ROMAN_PREFIX = ["", "PRIMVS", "SECVNDVS", "TERTIVS", "QVARTVS", "QVINTVS"];
 
@@ -364,6 +264,7 @@ function App() {
 // ─────────────────────────── AppInner ───────────────────────────
 function AppInner() {
   const { t } = useT();
+  const [activeTab, setActiveTab] = useState("chamber"); // chamber | strategy | oracle | gloss
   const [marketFilter, setMarketFilter] = useState("ALL");
   const [selectedFirmId, setSelectedFirmId] = useState(null);
   const [selectedPlanId, setSelectedPlanId] = useState(null);
@@ -451,6 +352,7 @@ function AppInner() {
     if (!planDraft) return;
     setLoading(true);
     setResults(null);
+    setActiveTab("oracle");
     setTimeout(() => {
       try { setResults(runMonteCarlo(planDraft, strategy, nSims)); }
       catch (e) { console.error(e); }
@@ -519,202 +421,296 @@ function AppInner() {
 
   return (
     <div style={{ minHeight: "100vh", color: C.boneDim }} data-testid="app-root">
-      <Header openWelcome={() => setWelcomeOpen(true)} welcomeOpen={welcomeOpen} />
+      <Header />
 
-      {welcomeOpen && <WelcomeBlock onClose={() => setWelcomeOpen(false)} />}
+      <div className="pf-tabs-wrap">
+        <div className="pf-tabs" role="tablist" data-testid="pf-tabs">
+          <button className={`pf-tab ${activeTab === "chamber" ? "active" : ""}`}
+                  data-testid="tab-chamber" onClick={() => setActiveTab("chamber")}>
+            <span className="num">01</span>{t("tab_01")}
+          </button>
+          <button className={`pf-tab ${activeTab === "strategy" ? "active" : ""}`}
+                  data-testid="tab-strategy" onClick={() => setActiveTab("strategy")}>
+            <span className="num">02</span>{t("tab_02")}
+          </button>
+          <button className={`pf-tab ${activeTab === "oracle" ? "active" : ""}`}
+                  data-testid="tab-oracle" onClick={() => setActiveTab("oracle")}>
+            <span className="num">03</span>{t("tab_03")}
+          </button>
+          <button className={`pf-tab ${activeTab === "gloss" ? "active" : ""}`}
+                  data-testid="tab-gloss" onClick={() => setActiveTab("gloss")}>
+            <span className="num">04</span>{t("tab_04")}
+          </button>
+        </div>
+      </div>
 
-      {/* STEP 1 */}
-      <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 0" }}>
-        <StepHead n={1} title={t("step_1_title")} subtitle={t("step_1_subtitle")} sub={t("step_1_hint")} />
-        <div style={{ display: "flex", gap: 0, alignItems: "center", marginBottom: 18, color: C.ash, fontSize: 12 }}
-             data-testid="market-filters">
-          <span style={{ marginRight: 10 }}>‹</span>
-          {[
-            { k: "ALL",     l: t("filter_all") },
-            { k: "FUTURES", l: t("filter_futures") },
-            { k: "FOREX",   l: t("filter_forex") },
-            { k: "CUSTOM",  l: t("filter_custom") },
-          ].map((f, i) => (
-            <React.Fragment key={f.k}>
-              {i > 0 && <span style={{ margin: "0 10px", color: C.borderHot }}>·</span>}
-              <button className={`fg-pill ${marketFilter === f.k ? "active" : ""}`}
+      {/* ─── TAB 01 · CHAMBER ─── */}
+      {activeTab === "chamber" && (
+        <div className="pf-tab-body fg-fadein" data-testid="pane-chamber">
+          <div className="pf-tab-head">
+            <div className="pf-tab-watermark">01</div>
+            <div className="pf-tab-kicker">01 · chamber</div>
+            <h2 className="pf-tab-title">{t("tab_01_title")}</h2>
+            <div className="pf-tab-hint">{t("tab_01_hint")}</div>
+          </div>
+          <div className="pf-epigraph">{t("tab_01_epigraph")}</div>
+
+          {welcomeOpen && <WelcomeBlock onClose={() => setWelcomeOpen(false)} />}
+
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 20, flexWrap: "wrap" }}
+               data-testid="market-filters">
+            {[
+              { k: "ALL",     l: t("filter_all") },
+              { k: "FUTURES", l: t("filter_futures") },
+              { k: "FOREX",   l: t("filter_forex") },
+              { k: "CUSTOM",  l: t("filter_custom") },
+            ].map(f => (
+              <button key={f.k}
+                      className={`fg-pill ${marketFilter === f.k ? "active" : ""}`}
                       onClick={() => setMarketFilter(f.k)}
                       data-testid={`filter-${f.k.toLowerCase()}`}>{f.l}</button>
-            </React.Fragment>
-          ))}
-          <span style={{ marginLeft: 10 }}>›</span>
-        </div>
-
-        <div className="fg-scroll" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }} data-testid="firm-grid">
-          {/* Custom card always first */}
-          {customFirm && (
-            <CustomFirstCard firm={customFirm}
-                             selected={selectedFirmId === "custom"}
-                             onClick={() => selectFirm("custom")} />
-          )}
-          {filteredRegular.map((firm, idx) => (
-            <FirmCard key={firm.id} firm={firm}
-                      selected={firm.id === selectedFirmId}
-                      onClick={() => selectFirm(firm.id)} idx={idx} />
-          ))}
-        </div>
-      </section>
-
-      {/* STEP 2 — either plan selector or custom landing */}
-      {selectedFirm && !isCustomMode && (
-        <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 0" }} className="fg-fadein">
-          <StepHead n={2} title={`${t("step_2_title")} — ${selectedFirm.name.toUpperCase()}`}
-                    subtitle={t("step_2_subtitle")} sub={`${selectedFirm.subtitle}`} />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }} data-testid="plan-grid">
-            {selectedFirm.plans.map(plan => (
-              <PlanCard key={plan.planId} plan={plan} firm={selectedFirm}
-                        selected={plan.planId === selectedPlanId}
-                        onClick={() => selectPlan(plan)} />
             ))}
           </div>
-        </section>
-      )}
-      {isCustomMode && (
-        <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 0" }} className="fg-fadein">
-          <StepHead n={2} title={t("step_custom_title")} subtitle={t("step_custom_subtitle")} sub={t("step_custom_hint")} />
-          <div className="fg-panel" style={{ padding: 16, borderColor: C.ember, borderStyle: "dashed",
-                                              background: `${C.ember}06` }} data-testid="custom-landing">
-            <div style={{ color: C.boneDim, fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-line" }}>
-              {t("step_custom_body")}
-            </div>
+
+          <div className="fg-scroll" data-testid="firm-grid"
+               style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+            {customFirm && (
+              <CustomFirstCard firm={customFirm}
+                               selected={selectedFirmId === "custom"}
+                               onClick={() => selectFirm("custom")} />
+            )}
+            {filteredRegular.map((firm, idx) => (
+              <FirmCard key={firm.id} firm={firm}
+                        selected={firm.id === selectedFirmId}
+                        onClick={() => selectFirm(firm.id)} idx={idx} />
+            ))}
           </div>
-        </section>
+
+          {selectedFirm && !isCustomMode && (
+            <section style={{ marginTop: 36 }} className="fg-fadein">
+              <div className="fg-sec">§ {t("step_2_title")} — {selectedFirm.name}</div>
+              <div data-testid="plan-grid"
+                   style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
+                {selectedFirm.plans.map(plan => (
+                  <PlanCard key={plan.planId} plan={plan} firm={selectedFirm}
+                            selected={plan.planId === selectedPlanId}
+                            onClick={() => selectPlan(plan)} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {isCustomMode && (
+            <section style={{ marginTop: 32 }} className="fg-fadein" data-testid="custom-landing">
+              <div className="fg-sec">§ {t("step_custom_title")}</div>
+              <div className="fg-panel" style={{ padding: 20, borderColor: C.brass, borderStyle: "dashed" }}>
+                <div style={{ color: C.boneDim, fontFamily: "var(--plex)", fontSize: 13.5, lineHeight: 1.7,
+                              whiteSpace: "pre-line" }}>
+                  {t("step_custom_body")}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {planDraft && selectedFirm && (
+            <>
+              <AccountSummary plan={planDraft} firm={selectedFirm} isModified={isModified} />
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
+                <button className="btn-secondary" onClick={() => setActiveTab("strategy")}
+                        data-testid="btn-next-strategy">
+                  {t("btn_next_strategy")}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
-      {/* Account summary (natural language) */}
-      {planDraft && selectedFirm && <AccountSummary plan={planDraft} firm={selectedFirm} isModified={isModified} />}
+      {/* ─── TAB 02 · STRATEGY ─── */}
+      {activeTab === "strategy" && (
+        <div className="pf-tab-body fg-fadein" data-testid="pane-strategy">
+          <div className="pf-tab-head">
+            <div className="pf-tab-watermark">02</div>
+            <div className="pf-tab-kicker">02 · strategy</div>
+            <h2 className="pf-tab-title">{t("tab_02_title")}</h2>
+            <div className="pf-tab-hint">{t("tab_02_hint")}</div>
+          </div>
 
-      {/* STEP 3 + RESULTS */}
-      {planDraft && (
-        <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 0" }} className="fg-fadein">
-          <div style={{ display: "flex", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
-            <div style={{ width: 360, minWidth: 300, flexShrink: 0 }} className="notebook-strategy">
-              <StepHead n={3} title={t("step_3_title")} subtitle={t("step_3_subtitle")} sub={t("step_3_hint")} />
-
-              <div className="fg-panel" style={{ padding: 14, marginBottom: 12 }}>
-                <SectionBar label={t("section_pnl")} />
-                <button className="fg-btn-ghost" onClick={() => setShowCsvModal(true)}
-                        data-testid="btn-open-csv" style={{ width: "100%", marginBottom: 10 }}>
-                  {t("calibrate_cta")}
+          {!planDraft && (
+            <div className="oracle-empty" data-testid="strategy-empty">
+              {t("strategy_empty")}
+              <div style={{ marginTop: 16 }}>
+                <button className="btn-secondary" onClick={() => setActiveTab("chamber")}>
+                  ← {t("tab_01")}
                 </button>
-                <NumField label={t("field_wr")} value={strategy.wr} step={0.01} tip="wr"
-                          onChange={v => setStrategy({ ...strategy, wr: v })} testId="strat-wr" />
-                <NumField label={t("field_mu_win")} prefix="$" value={strategy.muWin} tip="mu_sigma"
-                          onChange={v => setStrategy({ ...strategy, muWin: v })} testId="strat-muwin" />
-                <NumField label={t("field_sigma_win")} prefix="$" value={strategy.sigmaWin}
-                          onChange={v => setStrategy({ ...strategy, sigmaWin: v })} testId="strat-sigmawin" />
-                <NumField label={t("field_mu_loss")} prefix="$" value={strategy.muLoss}
-                          onChange={v => setStrategy({ ...strategy, muLoss: v })} testId="strat-muloss" />
-                <NumField label={t("field_sigma_loss")} prefix="$" value={strategy.sigmaLoss}
-                          onChange={v => setStrategy({ ...strategy, sigmaLoss: v })} testId="strat-sigmaloss" />
-                <NumField label={t("field_tail_prob")} value={strategy.tailProb} step={0.001} tip="spike"
-                          onChange={v => setStrategy({ ...strategy, tailProb: v })} testId="strat-tailprob" />
-                <NumField label={t("field_tail_mult")} value={strategy.tailMult} step={0.01}
-                          onChange={v => setStrategy({ ...strategy, tailMult: v })} testId="strat-tailmult" />
+              </div>
+            </div>
+          )}
+
+          {planDraft && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
+              {/* Left: Strategy + account editor */}
+              <div>
+                <div className="fg-panel" style={{ padding: 18, marginBottom: 14 }}>
+                  <SectionBar label={t("section_pnl")} />
+                  <button className="fg-btn-ghost" onClick={() => setShowCsvModal(true)}
+                          data-testid="btn-open-csv" style={{ width: "100%", marginBottom: 12 }}>
+                    {t("calibrate_cta")}
+                  </button>
+                  <NumField label={t("field_wr")} value={strategy.wr} step={0.01} tip="wr"
+                            onChange={v => setStrategy({ ...strategy, wr: v })} testId="strat-wr" />
+                  <NumField label={t("field_mu_win")} prefix="$" value={strategy.muWin} tip="mu_sigma"
+                            onChange={v => setStrategy({ ...strategy, muWin: v })} testId="strat-muwin" />
+                  <NumField label={t("field_sigma_win")} prefix="$" value={strategy.sigmaWin}
+                            onChange={v => setStrategy({ ...strategy, sigmaWin: v })} testId="strat-sigmawin" />
+                  <NumField label={t("field_mu_loss")} prefix="$" value={strategy.muLoss}
+                            onChange={v => setStrategy({ ...strategy, muLoss: v })} testId="strat-muloss" />
+                  <NumField label={t("field_sigma_loss")} prefix="$" value={strategy.sigmaLoss}
+                            onChange={v => setStrategy({ ...strategy, sigmaLoss: v })} testId="strat-sigmaloss" />
+                  <NumField label={t("field_tail_prob")} value={strategy.tailProb} step={0.001} tip="spike"
+                            onChange={v => setStrategy({ ...strategy, tailProb: v })} testId="strat-tailprob" />
+                  <NumField label={t("field_tail_mult")} value={strategy.tailMult} step={0.01}
+                            onChange={v => setStrategy({ ...strategy, tailMult: v })} testId="strat-tailmult" />
+                </div>
+
+                <details className="fg-panel" style={{ padding: 14, marginBottom: 14 }} open={showMaeBlock}
+                         onToggle={(e) => setShowMaeBlock(e.target.open)}>
+                  <summary style={{ fontSize: 10.5, letterSpacing: 0.3, textTransform: "uppercase",
+                                    color: C.ash, display: "flex", justifyContent: "space-between", fontWeight: 600,
+                                    alignItems: "center" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center" }}>
+                      § {t("section_mae")} <span style={{ color: C.borderHot, marginLeft: 6 }}>{t("section_mae_opt")}</span>
+                      <InfoTooltip id="mae" />
+                    </span>
+                    <span>{showMaeBlock ? "▾" : "▸"}</span>
+                  </summary>
+                  <div style={{ marginTop: 10 }}>
+                    <NumField label={t("field_mae_win")}  value={strategy.maeWin}  step={0.01}
+                              onChange={v => setStrategy({ ...strategy, maeWin: v })}  testId="strat-maewin" />
+                    <NumField label={t("field_mae_loss")} value={strategy.maeLoss} step={0.01}
+                              onChange={v => setStrategy({ ...strategy, maeLoss: v })} testId="strat-maeloss" />
+                  </div>
+                </details>
               </div>
 
-              <details className="fg-panel" style={{ padding: 12, marginBottom: 12 }} open={showMaeBlock}
-                       onToggle={(e) => setShowMaeBlock(e.target.open)}>
-                <summary style={{ fontSize: 10.5, letterSpacing: 0.3, textTransform: "uppercase",
-                                  color: C.ash, display: "flex", justifyContent: "space-between", fontWeight: 700,
-                                  alignItems: "center" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center" }}>
-                    § {t("section_mae")} <span style={{ color: C.borderHot, marginLeft: 6 }}>{t("section_mae_opt")}</span>
-                    <InfoTooltip id="mae" />
-                  </span>
-                  <span>{showMaeBlock ? "▾" : "▸"}</span>
-                </summary>
-                <div style={{ marginTop: 10 }}>
-                  <NumField label={t("field_mae_win")}  value={strategy.maeWin}  step={0.01}
-                            onChange={v => setStrategy({ ...strategy, maeWin: v })}  testId="strat-maewin" />
-                  <NumField label={t("field_mae_loss")} value={strategy.maeLoss} step={0.01}
-                            onChange={v => setStrategy({ ...strategy, maeLoss: v })} testId="strat-maeloss" />
-                </div>
-              </details>
-
-              <div className="fg-panel" style={{ padding: 12, marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
-                              marginBottom: showAccountEditor ? 10 : 0 }}>
-                  <div style={{ fontSize: 10.5, letterSpacing: 0.3, textTransform: "uppercase",
-                                color: C.ash, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
-                    <span>§ {t("section_account")}</span>
-                    {isModified && <span style={{ color: C.flame, fontSize: 9, letterSpacing: 0.2, padding: "1px 5px",
-                                                   border: `1px solid ${C.flame}`, background: `${C.flame}15` }}>{t("modified_badge")}</span>}
+              {/* Right: account + ignite */}
+              <div>
+                <div className="fg-panel" style={{ padding: 18, marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+                                marginBottom: showAccountEditor ? 12 : 0 }}>
+                    <div style={{ fontSize: 10.5, letterSpacing: 0.3, textTransform: "uppercase",
+                                  color: C.ash, fontWeight: 600, display: "flex", alignItems: "center", gap: 8,
+                                  fontFamily: "var(--plex)" }}>
+                      <span>§ {t("section_account")}</span>
+                      {isModified && <span style={{ color: C.flame, fontSize: 9, letterSpacing: 0.2, padding: "1px 5px",
+                                                     border: `1px solid ${C.flame}`, background: `${C.flame}15` }}>{t("modified_badge")}</span>}
+                    </div>
+                    {!isCustomMode && (
+                      <button className="fg-btn-ghost"
+                              onClick={() => { setShowAccountEditor(v => !v); setCustomUnlocked(true); }}
+                              data-testid="btn-edit-account">
+                        {showAccountEditor ? t("btn_close") : t("btn_edit")}
+                      </button>
+                    )}
                   </div>
-                  {!isCustomMode && (
-                    <button className="fg-btn-ghost"
-                            onClick={() => { setShowAccountEditor(v => !v); setCustomUnlocked(true); }}
-                            data-testid="btn-edit-account">
-                      {showAccountEditor ? t("btn_close") : t("btn_edit")}
-                    </button>
+                  {(showAccountEditor || isCustomMode) && (
+                    <AccountEditor draft={planDraft} onChange={updateDraft} onPhase2Change={updatePhase2}
+                                   unlocked={customUnlocked || isCustomMode}
+                                   onResetToPreset={presetPlan && !isCustomMode ? () => selectPlan(presetPlan) : null} />
                   )}
                 </div>
-                {(showAccountEditor || isCustomMode) && (
-                  <AccountEditor draft={planDraft} onChange={updateDraft} onPhase2Change={updatePhase2}
-                                 unlocked={customUnlocked || isCustomMode}
-                                 onResetToPreset={presetPlan && !isCustomMode ? () => selectPlan(presetPlan) : null} />
-                )}
-              </div>
 
-              <div className="fg-panel" style={{ padding: 14, marginBottom: 14 }}>
-                <SectionBar label={t("section_sim")} />
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <label className="fg-label">{t("field_n_sims")}</label>
-                  <span style={{ color: C.ember, fontSize: 12 }}>{nSims.toLocaleString("en-US")}</span>
+                <div className="fg-panel" style={{ padding: 18, marginBottom: 14 }}>
+                  <SectionBar label={t("section_sim")} />
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                    <label className="fg-label">{t("field_n_sims")}</label>
+                    <span style={{ color: C.brass, fontFamily: "var(--mono)", fontSize: 13 }}>
+                      {nSims.toLocaleString("en-US")}
+                    </span>
+                  </div>
+                  <input type="range" className="fg-range" min={1000} max={25000} step={1000}
+                         value={nSims} onChange={(e) => setNSims(parseInt(e.target.value))}
+                         data-testid="sim-nsims" />
                 </div>
-                <input type="range" className="fg-range" min={1000} max={25000} step={1000}
-                       value={nSims} onChange={(e) => setNSims(parseInt(e.target.value))}
-                       data-testid="sim-nsims" />
-              </div>
 
-              <button className={`invoke-btn ${loading ? "loading" : ""}`}
-                      onClick={handleRun} disabled={!planDraft || loading}
-                      data-testid="btn-run">
-                <InvokeFlame />
-                <span style={{ position: "relative", zIndex: 2 }}>
-                  <span className="dagger">✦</span>
+                <button className={`invoke-btn ${loading ? "loading" : ""}`}
+                        onClick={handleRun} disabled={!planDraft || loading}
+                        data-testid="btn-run">
                   {loading ? t("btn_running") : t("btn_run")}
-                  <span className="dagger">✦</span>
-                </span>
-              </button>
+                </button>
 
-              <button className="fg-btn-ghost"
-                      onClick={addToCompare}
-                      disabled={compareSlots.length >= 4}
-                      data-testid="btn-add-compare"
-                      style={{ width: "100%", marginTop: 10, padding: 10 }}>
-                {compareSlots.length >= 4 ? t("btn_compare_full") : t("btn_add_compare", { n: compareSlots.length })}
-              </button>
+                <button className="fg-btn-ghost"
+                        onClick={addToCompare}
+                        disabled={compareSlots.length >= 4}
+                        data-testid="btn-add-compare"
+                        style={{ width: "100%", marginTop: 10, padding: 10 }}>
+                  {compareSlots.length >= 4 ? t("btn_compare_full") : t("btn_add_compare", { n: compareSlots.length })}
+                </button>
+              </div>
             </div>
+          )}
 
-            <div style={{ flex: 1, minWidth: 300 }} ref={resultsRef}>
+          {compareSlots.length > 0 && (
+            <section style={{ marginTop: 36 }} className="fg-fadein">
+              <CompareRack slots={compareSlots} onRemove={removeFromCompare} onClear={clearCompare}
+                           onRunAll={runAllCompare} loading={compareLoading} />
+            </section>
+          )}
+        </div>
+      )}
+
+      {/* ─── TAB 03 · ORACLE ─── */}
+      {activeTab === "oracle" && (
+        <div className="pf-tab-body fg-fadein" data-testid="pane-oracle">
+          <div className="pf-tab-head">
+            <div className="pf-tab-watermark">03</div>
+            <div className="pf-tab-kicker">03 · oracle</div>
+            <h2 className="pf-tab-title">{t("tab_03_title")}</h2>
+            <div className="pf-tab-hint">{t("tab_03_hint")}</div>
+          </div>
+
+          {!results && !loading && (
+            <div className="oracle-empty" data-testid="oracle-empty">
+              {t("tab_03_empty")}
+              <div style={{ marginTop: 16 }}>
+                <button className="btn-secondary" onClick={() => setActiveTab("strategy")}>
+                  ← {t("tab_02")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {(results || loading) && (
+            <div ref={resultsRef}>
               <ResultsPanel results={results} loading={loading}
                             plan={planDraft} firm={selectedFirm} isModified={isModified}
                             onExportJSON={exportJSON}
                             onExportPNG={() => exportPNG(resultsRef, `propforge-${selectedFirm?.id}-${planDraft?.planId}`)}
               />
             </div>
-          </div>
-        </section>
-      )}
+          )}
 
-      {compareSlots.length > 0 && (
-        <section style={{ maxWidth: 1600, margin: "0 auto", padding: "26px 24px 0" }} className="fg-fadein">
-          <CompareRack slots={compareSlots} onRemove={removeFromCompare} onClear={clearCompare}
-                       onRunAll={runAllCompare} loading={compareLoading} />
           {compareSlots.some(s => s.results) && (
-            <div ref={compareRef}>
+            <div ref={compareRef} style={{ marginTop: 36 }}>
               <CompareResults slots={compareSlots}
                               onExportJSON={exportCompareJSON}
                               onExportPNG={() => exportPNG(compareRef, "propforge-compare")} />
             </div>
           )}
-        </section>
+        </div>
+      )}
+
+      {/* ─── TAB 04 · GLOSS ─── */}
+      {activeTab === "gloss" && (
+        <div className="pf-tab-body fg-fadein" data-testid="pane-gloss">
+          <div className="pf-tab-head">
+            <div className="pf-tab-watermark">04</div>
+            <div className="pf-tab-kicker">04 · gloss</div>
+            <h2 className="pf-tab-title">{t("tab_04_title")}</h2>
+            <div className="pf-tab-hint">{t("tab_04_hint")}</div>
+          </div>
+          <Glossary />
+        </div>
       )}
 
       <Footer />
@@ -723,76 +719,120 @@ function AppInner() {
   );
 }
 
-// ─────────────────────────── Rail + Hero ───────────────────────────
-function Header({ openWelcome, welcomeOpen }) {
+// ─────────────────────────── Compact header ───────────────────────────
+function Header() {
   const { lang, t, setLang } = useT();
   const totalFirms = FIRM_DATABASE.filter(f => f.market !== "custom").length;
   const totalPlans = FIRM_DATABASE.reduce((a, f) => a + f.plans.length, 0);
   return (
-    <>
-      <div className="oracle-rail">
-        <div className="oracle-rail-inner">
-          <div className="oracle-rail-brand">
-            prop<span className="acc"> · </span>forge
-            <span style={{ color: C.ash, margin: "0 12px", letterSpacing: 0 }}>//</span>
-            <span style={{ fontFamily: "var(--young)", fontStyle: "italic", fontWeight: 400,
-                           color: C.boneDim, letterSpacing: 0.03, textTransform: "none", fontSize: 13 }}>
-              monte carlo oracle
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
-            {!welcomeOpen && (
-              <button className="fg-btn-ghost" onClick={openWelcome} data-testid="btn-show-help">
-                {t("welcome_show")}
-              </button>
-            )}
-            <LangToggle lang={lang} setLang={setLang} />
-            <div style={{ color: C.ash, fontSize: 10.5, letterSpacing: 0.2, fontFamily: "var(--mono)" }}>
-              <span style={{ color: C.ember }}>✦</span> {totalFirms}·{totalPlans}
+    <header className="pf-header" data-testid="pf-header">
+      <div className="pf-header-inner">
+        <div className="pf-brand">
+          <HeaderSeal />
+          <div>
+            <div className="pf-brand-mark" data-testid="hero-title">
+              PROP<span className="dot">·</span>FORGE
             </div>
+            <span className="pf-brand-sub">{t("app_subtitle")}</span>
+            <span className="pf-brand-line" />
+          </div>
+        </div>
+        <div className="pf-header-actions">
+          <LangToggle lang={lang} setLang={setLang} />
+          <div className="pf-meta">
+            {totalFirms} chambers <span className="acc">·</span> {totalPlans} plans
           </div>
         </div>
       </div>
-      <HeroSection lang={lang} />
-    </>
+    </header>
   );
 }
 
-function HeroSection({ lang }) {
+// ─────────────────────────── Glossary (tab 04) ───────────────────────────
+function Glossary() {
   const { t } = useT();
-  const totalFirms = FIRM_DATABASE.filter(f => f.market !== "custom").length;
-  const totalPlans = FIRM_DATABASE.reduce((a, f) => a + f.plans.length, 0);
+  const [query, setQuery] = useState("");
+  const sections = useMemo(() => [
+    { id: "methods",    letter: "A", title: t("gloss_a_title") },
+    { id: "dd-types",   letter: "B", title: t("gloss_b_title") },
+    { id: "floor-lock", letter: "C", title: t("gloss_c_title") },
+    { id: "cons",       letter: "D", title: t("gloss_d_title") },
+    { id: "mae",        letter: "E", title: t("gloss_e_title") },
+    { id: "metrics",    letter: "F", title: t("gloss_f_title") },
+  ], [t]);
+
+  const terms = useMemo(() => ([
+    { section: "methods", name: t("gloss_simple_name"),       body: t("gloss_simple_body") },
+    { section: "methods", name: t("gloss_bootstrap_name"),    body: t("gloss_bootstrap_body") },
+    { section: "dd-types", name: t("gloss_static_name"),      body: t("gloss_static_body") },
+    { section: "dd-types", name: t("gloss_teod_name"),        body: t("gloss_teod_body") },
+    { section: "dd-types", name: t("gloss_tintraday_name"),   body: t("gloss_tintraday_body") },
+    { section: "floor-lock", name: t("gloss_fl_none_name"),   body: t("gloss_fl_none_body") },
+    { section: "floor-lock", name: t("gloss_fl_cap_name"),    body: t("gloss_fl_cap_body") },
+    { section: "floor-lock", name: t("gloss_fl_target_name"), body: t("gloss_fl_target_body") },
+    { section: "floor-lock", name: t("gloss_fl_cap100_name"), body: t("gloss_fl_cap100_body") },
+    { section: "cons", name: t("gloss_cons_target_name"),     body: t("gloss_cons_target_body") },
+    { section: "cons", name: t("gloss_cons_total_name"),      body: t("gloss_cons_total_body") },
+    { section: "mae", name: t("gloss_mae_name"),              body: t("gloss_mae_body") },
+    { section: "metrics", name: t("gloss_ppass_name"),        body: t("gloss_ppass_body") },
+    { section: "metrics", name: t("gloss_ev_name"),           body: t("gloss_ev_body") },
+    { section: "metrics", name: t("gloss_breakeven_name"),    body: t("gloss_breakeven_body") },
+    { section: "metrics", name: t("gloss_bankroll_name"),     body: t("gloss_bankroll_body") },
+    { section: "metrics", name: t("gloss_days_name"),         body: t("gloss_days_body") },
+    { section: "metrics", name: t("gloss_attempts_name"),     body: t("gloss_attempts_body") },
+  ]), [t]);
+
+  const q = query.trim().toLowerCase();
+  const filter = (term) => !q ||
+    term.name.toLowerCase().includes(q) ||
+    term.body.toLowerCase().includes(q);
+
   return (
-    <section className="oracle-hero" data-testid="oracle-hero">
-      {/* Physical decorative SVG objects */}
-      <DecoTarot />
-      <DecoSeal />
-      <DecoChains />
-      <DecoChains alt />
-      <DecoCoin />
-      <DecoStain />
-
-      <h1 className="oracle-h1" data-testid="hero-title" style={{ position: "relative", zIndex: 4 }}>
-        <span className="hero-prop">PROP</span>
-        <span className="hero-forge">FORGE</span>
-      </h1>
-      <div className="hero-latin">oracvlvm statisticvm</div>
-
-      <blockquote className="hero-quote">
-        {t("hero_quote")}
-        <span className="hero-quote-cite">{t("hero_quote_author")}</span>
-      </blockquote>
-
-      <div className="hero-meta">
-        <span>{totalFirms} {t("hero_firms")}</span>
-        <span className="dot">·</span>
-        <span>{totalPlans} {t("hero_plans")}</span>
-        <span className="dot">·</span>
-        <span>{lang === "es" ? "client-side" : "client-side"}</span>
+    <div className="gloss-wrap" data-testid="glossary">
+      <nav className="gloss-nav" aria-label="glossary index">
+        <input className="fg-input gloss-search"
+               placeholder={t("gloss_search_placeholder")}
+               value={query} onChange={(e) => setQuery(e.target.value)}
+               data-testid="gloss-search" />
+        <ul>
+          {sections.map(s => (
+            <li key={s.id}>
+              <a href={`#gloss-${s.id}`}
+                 onClick={(e) => {
+                   e.preventDefault();
+                   const el = document.getElementById(`gloss-${s.id}`);
+                   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                 }}
+                 data-testid={`gloss-nav-${s.id}`}>
+                <span className="letter">{s.letter}</span>{s.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <div>
+        {sections.map(s => {
+          const secTerms = terms.filter(t => t.section === s.id).filter(filter);
+          if (secTerms.length === 0 && q) return null;
+          return (
+            <section key={s.id} id={`gloss-${s.id}`} className="gloss-section">
+              <h3><span className="letter-tag">{s.letter}</span>{s.title}</h3>
+              <div className="rule" />
+              {secTerms.map((term, i) => (
+                <div key={i} className="gloss-term">
+                  <div className="gloss-term-name">{term.name}</div>
+                  <div className="gloss-term-body" style={{ whiteSpace: "pre-line" }}>{term.body}</div>
+                </div>
+              ))}
+            </section>
+          );
+        })}
       </div>
-    </section>
+    </div>
   );
 }
+
+function HeroSection() { return null; }
 
 function LangToggle({ lang, setLang }) {
   const active = { color: C.ember, fontWeight: 700 };
@@ -906,10 +946,9 @@ function CustomFirstCard({ firm, selected, onClick }) {
          className={`fg-card custom-card ${selected ? "selected" : ""}`}
          style={{ padding: 28, display: "flex", flexDirection: "column", gap: 14,
                   justifyContent: "space-between", position: "relative" }}>
-      <IrregularBorder seed={99} />
-      <div style={{ display: "flex", alignItems: "center", gap: 16, position: "relative", zIndex: 2 }}>
-        <svg viewBox="0 0 64 64" width="58" height="58" aria-hidden="true"
-             style={{ color: C.ember, display: "block", flexShrink: 0, opacity: 0.9 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <svg viewBox="0 0 64 64" width="52" height="52" aria-hidden="true"
+             style={{ color: C.brass, display: "block", flexShrink: 0, opacity: 0.85 }}>
           <path d="M18,38 L18,44 L46,44 L46,38 Q46,34 42,34 L22,34 Q18,34 18,38 Z"
                 fill="none" stroke="currentColor" strokeWidth="1.3" />
           <path d="M12,34 L52,34" stroke="currentColor" strokeWidth="0.8" opacity="0.6" />
@@ -917,8 +956,8 @@ function CustomFirstCard({ firm, selected, onClick }) {
           <circle cx="32" cy="20" r="2" fill="currentColor" />
         </svg>
         <div>
-          <div style={{ fontFamily: "var(--unica)", fontSize: 11, letterSpacing: 0.35,
-                        color: C.flame, marginBottom: 6 }}>
+          <div style={{ fontFamily: "var(--plex)", fontSize: 10.5, letterSpacing: 0.24,
+                        fontWeight: 500, color: C.flame, marginBottom: 6, textTransform: "uppercase" }}>
             · vocatio propria
           </div>
           <div style={{ fontFamily: "var(--fraunces)", fontVariationSettings: "'opsz' 144, 'WONK' 1",
@@ -928,12 +967,12 @@ function CustomFirstCard({ firm, selected, onClick }) {
           </div>
         </div>
       </div>
-      <div style={{ fontFamily: "var(--young)", fontStyle: "italic", color: C.boneDim,
-                    fontSize: 15, lineHeight: 1.55, maxWidth: 520, position: "relative", zIndex: 2 }}>
+      <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
+                    fontSize: 13.5, lineHeight: 1.6, maxWidth: 520, fontWeight: 300 }}>
         {t("custom_card_desc")}
       </div>
-      <div style={{ color: C.ember, fontFamily: "var(--unica)", fontSize: 12,
-                    letterSpacing: 0.35, textTransform: "uppercase", position: "relative", zIndex: 2 }}>
+      <div style={{ color: C.brass, fontFamily: "var(--plex)", fontSize: 11.5,
+                    fontWeight: 600, letterSpacing: 0.22, textTransform: "uppercase" }}>
         → {t("custom_card_cta")}
       </div>
     </div>
@@ -957,7 +996,7 @@ function estimateDifficulty(firm) {
   return Math.min(3, Math.max(1, Math.round(score / 2)));
 }
 
-function FirmCard({ firm, selected, onClick, idx }) {
+function FirmCard({ firm, selected, onClick }) {
   const { t } = useT();
   const hasTwoPhase = firm.plans.some(p => p.phases === 2);
   const ddTypes = [...new Set(firm.plans.map(p => p.ddType))];
@@ -965,38 +1004,34 @@ function FirmCard({ firm, selected, onClick, idx }) {
     trailing_eod: "trailing·eod", trailing_intraday: "trailing·intraday", static: "static"
   }[type] || type);
   const ddCol = (type) => ({
-    trailing_eod: C.ember, trailing_intraday: C.flame, static: C.ash
+    trailing_eod: C.brass, trailing_intraday: C.flame, static: C.steel
   }[type] || C.ash);
   const stars = estimateDifficulty(firm);
   return (
     <div className={`fg-card ${selected ? "selected" : ""}`}
          onClick={onClick} data-testid={`firm-${firm.id}`}
-         style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12, minHeight: 150, position: "relative" }}>
-      <IrregularBorder seed={idx || 0} />
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "flex-start",
-                    justifyContent: "space-between", gap: 8 }}>
+         style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12, minHeight: 148, position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontFamily: "var(--fraunces)", fontVariationSettings: "'opsz' 144, 'WONK' 1",
-                        fontWeight: 900, color: C.bone, fontSize: 18, letterSpacing: "-0.01em",
-                        lineHeight: 0.95,
+          <div style={{ fontFamily: "var(--plex)", fontWeight: 600, color: C.bone, fontSize: 14.5,
+                        letterSpacing: 0.02,
                         whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {firm.name}
           </div>
-          <div style={{ fontFamily: "var(--young)", fontStyle: "italic", color: C.ash,
-                        fontSize: 13, marginTop: 4 }}>
+          <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.ash,
+                        fontWeight: 300, fontSize: 12.5, marginTop: 4 }}>
             {firm.subtitle}
           </div>
         </div>
         <Tag color={firm.badgeColor}>{firm.badge}</Tag>
       </div>
-      <div style={{ marginTop: "auto", position: "relative", zIndex: 2,
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
+      <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between",
                     gap: 10, flexWrap: "wrap" }}>
         <span className="fg-rating" data-testid={`firm-${firm.id}-difficulty`}>
           {"✦".repeat(stars)}<span className="dim">{"✦".repeat(3 - stars)}</span>
         </span>
-        <div style={{ display: "flex", gap: 10, fontSize: 10, letterSpacing: 0.15,
-                      fontFamily: "var(--unica)", textTransform: "uppercase" }}>
+        <div style={{ display: "flex", gap: 10, fontSize: 10, letterSpacing: 0.14,
+                      fontFamily: "var(--mono)", fontWeight: 400 }}>
           {ddTypes.map(ty => (
             <span key={ty} style={{ color: ddCol(ty) }}>{ddTag(ty)}</span>
           ))}
@@ -1342,112 +1377,94 @@ function ResultsDashboard({ results, plan }) {
   const { t } = useT();
   const r = results;
   const passing = r.pPass > r.ruinaMin;
-  const passColor = passing ? C.ember : C.blood;
-  const evColor = r.ev >= 0 ? C.ember : C.blood;
+  const evColor = r.ev >= 0 ? C.bone : C.flame;
   const failTotal = r.pDD + r.pTimeout + r.pDLL;
 
   let fourth;
-  if (r.pTimeout > 0.01) fourth = { label: t("kpi_p_timeout"), value: fmtPct(r.pTimeout), color: C.flame, sub: t("kpi_p_timeout_sub") };
+  if (r.pTimeout > 0.01) fourth = { label: t("kpi_p_timeout"), value: fmtPct(r.pTimeout), color: C.brass,     sub: t("kpi_p_timeout_sub") };
   else if (r.pDLL > 0.01) fourth = { label: t("kpi_p_dll"),     value: fmtPct(r.pDLL),     color: C.bloodDark, sub: t("kpi_p_dll_sub") };
-  else                    fourth = { label: t("kpi_p_fail"),    value: fmtPct(failTotal),  color: C.blood, sub: t("kpi_p_fail_sub") };
+  else                    fourth = { label: t("kpi_p_fail"),    value: fmtPct(failTotal),  color: C.flame,     sub: t("kpi_p_fail_sub") };
 
   const ROI = r.avgCost > 0 ? ((r.payout - r.avgCost) / r.avgCost) * 100 : 0;
 
   const distData = [
-    { name: "PASS", pct: +(r.pPass * 100).toFixed(2), fill: C.ember },
-    { name: "DD",   pct: +(r.pDD   * 100).toFixed(2), fill: C.blood },
+    { name: "PASS", pct: +(r.pPass * 100).toFixed(2), fill: C.bone },
+    { name: "DD",   pct: +(r.pDD   * 100).toFixed(2), fill: C.flame },
   ];
-  if (r.pTimeout > 0) distData.push({ name: "TIMEOUT", pct: +(r.pTimeout * 100).toFixed(2), fill: C.flame });
+  if (r.pTimeout > 0) distData.push({ name: "TIMEOUT", pct: +(r.pTimeout * 100).toFixed(2), fill: C.brass });
   if (r.pDLL     > 0) distData.push({ name: "DLL",     pct: +(r.pDLL     * 100).toFixed(2), fill: C.bloodDark });
 
-  // Asymmetric constellation: P(PASS) center + 6 peripheral KPIs
-  const kpiTL = { label: t("kpi_mean_days"),
-                  value: r.nPass > 0 ? `${Math.round(r.meanPass)}d` : "—",
-                  sub:   r.nPass > 0 ? t("kpi_mean_days_sub_ok", { x: Math.round(r.medianPass) }) : t("kpi_mean_days_sub_none"),
-                  color: C.bone, testId: "kpi-meanpass", pos: "p-tl" };
-  const kpiTR = { label: t("kpi_p_dd"), value: fmtPct(r.pDD), sub: t("kpi_p_dd_sub"),
-                  color: C.blood, testId: "kpi-pdd", pos: "p-tr" };
-  const kpiML = { label: t("kpi_bankroll"),
-                  value: r.passEssentiallyZero ? "—" : fmtMoney(r.br95),
-                  sub:   r.passEssentiallyZero ? t("kpi_bankroll_sub_zero") : t("kpi_bankroll_sub_ok", { x: fmtInt(r.n95) }),
-                  color: C.ember, testId: "kpi-br95", pos: "p-ml" };
-  const kpiMR = { label: t("kpi_ev"),
-                  value: (r.ev >= 0 ? "+" : "-") + fmtMoney(Math.abs(r.ev)),
-                  sub: t("kpi_ev_sub", { x: fmtMoney(r.avgCost) }),
-                  color: evColor, testId: "kpi-ev", pos: "p-mr" };
-  const kpiBL = { label: t("kpi_p90_days"),
-                  value: r.nPass > 0 ? `${Math.round(r.p90Pass)}d` : "—",
-                  sub: t("kpi_p90_days_sub"), color: C.ember, testId: "kpi-p90pass", pos: "p-bl" };
-  const kpiBC = { label: fourth.label, value: fourth.value, sub: fourth.sub,
-                  color: fourth.color, testId: "kpi-fourth", pos: "p-bc" };
-
-  // Progress bar width: how far above break-even (ruinaMin)
-  const beProgress = r.ruinaMin > 0
-    ? Math.min(100, Math.max(0, (r.pPass / Math.max(r.ruinaMin * 2, 0.0001)) * 100))
-    : (r.pPass > 0 ? 100 : 0);
-
   return (
-    <div data-testid="results-dashboard">
-      <div className="oracle-chapter">
-        <div className="tag">✦ {t("reveal_tag")}</div>
-        <div className="title">{t("reveal_title")}</div>
-      </div>
-
-      <div className="oracle-revelation-v2 kpi-stagger" data-testid="oracle-revelation">
-        {/* Constellation connecting lines */}
-        <svg className="revel-constellation" viewBox="0 0 1000 580" preserveAspectRatio="none" aria-hidden="true">
-          <line x1="500" y1="244" x2="90"  y2="60"  stroke={C.ember} strokeWidth="0.5" />
-          <line x1="500" y1="244" x2="920" y2="80"  stroke={C.ember} strokeWidth="0.5" />
-          <line x1="500" y1="244" x2="920" y2="286" stroke={C.ember} strokeWidth="0.5" />
-          <line x1="500" y1="244" x2="200" y2="520" stroke={C.ember} strokeWidth="0.5" />
-          <line x1="500" y1="244" x2="500" y2="560" stroke={C.ember} strokeWidth="0.5" />
-        </svg>
-
-        {/* Peripheral KPIs */}
-        {[kpiTL, kpiTR, kpiML, kpiMR, kpiBL, kpiBC].map(k => (
-          <div key={k.testId} className={`revel-kpi ${k.pos}`} data-testid={k.testId}>
-            <div className="lbl">{k.label}</div>
-            <div className="val" style={{ color: k.color }}>{k.value}</div>
-            {k.sub && <div className="sub">{k.sub}</div>}
-          </div>
-        ))}
-
-        {/* Hand-drawn center frame + P(PASS) */}
-        <div className={`revel-center ${passing ? "passing" : "failing"}`} data-testid="kpi-ppass">
-          <svg className="revel-center-frame" viewBox="0 0 340 260" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M 16,8 Q 170,2 324,10 Q 332,130 326,254 Q 170,260 14,252 Q 10,130 16,8 Z"
-                  fill="none" stroke={passing ? C.ember : C.blood} strokeWidth="1.2" opacity="0.85" />
-            <path d="M 22,16 Q 170,12 320,18 Q 326,130 320,244 Q 170,250 22,242 Q 18,130 22,16 Z"
-                  fill="none" stroke={passing ? C.ember : C.blood} strokeWidth="0.4" opacity="0.55"
-                  strokeDasharray="3 4" />
-          </svg>
+    <div className="oracle-editorial" data-testid="results-dashboard">
+      {/* Hero KPI row: P(PASS) · EV · P(DD) */}
+      <div className="oracle-hero-kpis" data-testid="oracle-revelation">
+        <div className={`oracle-ppass ${passing ? "passing" : "failing"}`} data-testid="kpi-ppass">
           <div className="lbl">{t("kpi_p_pass")}</div>
-          <div className="big-wrap">
-            <span className="big">{(r.pPass * 100).toFixed(1)}</span>
-            <span className="pct-sm" style={{ color: passing ? C.ember : C.blood }}>%</span>
-          </div>
-          <div className="progress-bar">
-            <div className="fill" style={{ width: `${beProgress}%`,
-                                            background: passing ? C.ember : C.blood,
-                                            boxShadow: passing ? "0 0 6px #EFE547" : "0 0 6px #C41E3A" }} />
-          </div>
+          <div className="big">{fmtPct(r.pPass)}</div>
+          <div className="rule" />
           <div className="sub">{t("kpi_p_pass_sub", { x: (r.ruinaMin * 100).toFixed(1) })}</div>
+        </div>
+        <div className="oracle-secondary" data-testid="kpi-ev">
+          <div className="lbl">{t("kpi_ev")}</div>
+          <div className="val" style={{ color: evColor }}>
+            {(r.ev >= 0 ? "+" : "-") + fmtMoney(Math.abs(r.ev))}
+          </div>
+          <div className="sub">{t("kpi_ev_sub", { x: fmtMoney(r.avgCost) })}</div>
+        </div>
+        <div className="oracle-secondary" data-testid="kpi-pdd">
+          <div className="lbl">{t("kpi_p_dd")}</div>
+          <div className="val" style={{ color: C.flame }}>{fmtPct(r.pDD)}</div>
+          <div className="sub">{t("kpi_p_dd_sub")}</div>
         </div>
       </div>
 
-      <div className="oracle-chapter">
-        <div className="tag">‡ {t("chart_chapter")}</div>
-        <div className="title">{t("chart_chapter_title")}</div>
+      {/* Distribution strip */}
+      <div className="oracle-strip-title">{t("chart_result_dist")}</div>
+      <div className="oracle-strip">
+        <div><span className="lbl">pass</span>
+          <span className="val" style={{ color: passing ? C.bone : C.flame }}>{fmtPct(r.pPass)}</span></div>
+        <div><span className="lbl">dd</span>
+          <span className="val" style={{ color: C.flame }}>{fmtPct(r.pDD)}</span></div>
+        <div><span className="lbl">timeout</span>
+          <span className="val" style={{ color: C.brass }}>{r.pTimeout > 0.001 ? fmtPct(r.pTimeout) : "—"}</span></div>
+        <div><span className="lbl">dll</span>
+          <span className="val" style={{ color: C.bloodDark }}>{r.pDLL > 0.001 ? fmtPct(r.pDLL) : "—"}</span></div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12, marginBottom: 14 }}>
+      {/* Timing strip */}
+      <div className="oracle-strip-title">{t("ledger_chapter_title_timing")}</div>
+      <div className="oracle-strip">
+        <div data-testid="kpi-meanpass"><span className="lbl">{t("kpi_mean_days")}</span>
+          <span className="val">{r.nPass > 0 ? `${Math.round(r.meanPass)}d` : "—"}</span>
+          <span className="sub">
+            {r.nPass > 0 ? t("kpi_mean_days_sub_ok", { x: Math.round(r.medianPass) }) : t("kpi_mean_days_sub_none")}
+          </span></div>
+        <div data-testid="kpi-p90pass"><span className="lbl">{t("kpi_p90_days")}</span>
+          <span className="val" style={{ color: C.brass }}>
+            {r.nPass > 0 ? `${Math.round(r.p90Pass)}d` : "—"}
+          </span>
+          <span className="sub">{t("kpi_p90_days_sub")}</span></div>
+        <div data-testid="kpi-br95"><span className="lbl">{t("kpi_bankroll")}</span>
+          <span className="val" style={{ color: C.brass }}>
+            {r.passEssentiallyZero ? "—" : fmtMoney(r.br95)}
+          </span>
+          <span className="sub">
+            {r.passEssentiallyZero ? t("kpi_bankroll_sub_zero") : t("kpi_bankroll_sub_ok", { x: fmtInt(r.n95) })}
+          </span></div>
+        <div data-testid="kpi-fourth"><span className="lbl">{fourth.label}</span>
+          <span className="val" style={{ color: fourth.color }}>{fourth.value}</span>
+          <span className="sub">{fourth.sub}</span></div>
+      </div>
+
+      {/* Charts */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, marginTop: 24 }}>
         <div className="fg-panel" style={{ padding: 16 }} data-testid="chart-dist">
           <ChartTitle title={t("chart_result_dist")} />
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={distData} margin={{ top: 20, right: 10, left: 4, bottom: 0 }}>
               <XAxis dataKey="name" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} />
               <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} unit="%" />
-              <Tooltip content={<CTooltip />} cursor={{ fill: `${C.ember}10` }} />
+              <Tooltip content={<CTooltip />} cursor={{ fill: `${C.brass}15` }} />
               <Bar dataKey="pct"
                    label={{ position: "top", fill: C.bone, fontSize: 11, formatter: (v) => `${v}%` }}>
                 {distData.map((d, i) => <Cell key={i} fill={d.fill} />)}
@@ -1463,9 +1480,9 @@ function ResultsDashboard({ results, plan }) {
               <BarChart data={r.histPass} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
                 <XAxis dataKey="day" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} />
                 <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} unit="%" />
-                <Tooltip content={<CTooltip />} cursor={{ fill: `${C.ember}10` }} />
-                <ReferenceLine x={Math.round(r.medianPass)} stroke={C.flame} strokeDasharray="2 3" />
-                <Bar dataKey="pct" fill={C.ember} />
+                <Tooltip content={<CTooltip />} cursor={{ fill: `${C.brass}15` }} />
+                <ReferenceLine x={Math.round(r.medianPass)} stroke={C.brass} strokeDasharray="2 3" />
+                <Bar dataKey="pct" fill={C.bone} />
               </BarChart>
             </ResponsiveContainer>
           ) : <EmptyChart />}
@@ -1478,37 +1495,34 @@ function ResultsDashboard({ results, plan }) {
               <BarChart data={r.histFail} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
                 <XAxis dataKey="day" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} />
                 <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} unit="%" />
-                <Tooltip content={<CTooltip />} cursor={{ fill: `${C.blood}10` }} />
-                <ReferenceLine x={Math.round(r.medianFail)} stroke={C.ember} strokeDasharray="2 3" />
-                <Bar dataKey="pct" fill={C.blood} />
+                <Tooltip content={<CTooltip />} cursor={{ fill: `${C.flame}15` }} />
+                <ReferenceLine x={Math.round(r.medianFail)} stroke={C.brass} strokeDasharray="2 3" />
+                <Bar dataKey="pct" fill={C.flame} />
               </BarChart>
             </ResponsiveContainer>
           ) : <EmptyChart />}
         </div>
       </div>
 
-      <div className="oracle-chapter">
-        <div className="tag">§ {t("ledger_chapter")}</div>
-        <div className="title">{t("ledger_chapter_title")}</div>
-      </div>
-
+      {/* Ledger */}
+      <div className="oracle-strip-title" style={{ marginTop: 28 }}>{t("ledger_chapter_title")}</div>
       <div className="oracle-ledger" data-testid="stats-row">
         <div className="row"><span className="k">{t("stat_p_pass")}</span>
-          <span className="v" style={{ color: passColor }}>{fmtPct(r.pPass)}</span></div>
+          <span className="v" style={{ color: passing ? C.bone : C.flame }}>{fmtPct(r.pPass)}</span></div>
         <div className="row"><span className="k">{t("stat_ev_net")}</span>
           <span className="v" style={{ color: evColor }}>{(r.ev >= 0 ? "+" : "") + fmtMoney(r.ev)}</span></div>
         <div className="row"><span className="k">{t("stat_br99")}</span>
-          <span className="v" style={{ color: C.ember }}>{r.passEssentiallyZero ? "—" : fmtMoney(r.br99)}</span></div>
+          <span className="v" style={{ color: C.brass }}>{r.passEssentiallyZero ? "—" : fmtMoney(r.br99)}</span></div>
         <div className="row"><span className="k">{t("stat_att99")}</span>
           <span className="v">{r.passEssentiallyZero ? "—" : fmtInt(r.n99)}</span></div>
         <div className="row"><span className="k">{t("stat_roi")}</span>
-          <span className="v" style={{ color: ROI >= 0 ? C.ember : C.blood }}>{ROI.toFixed(0)}%</span></div>
+          <span className="v" style={{ color: ROI >= 0 ? C.bone : C.flame }}>{ROI.toFixed(0)}%</span></div>
         <div className="row"><span className="k">{t("stat_split")}</span>
           <span className="v">{(plan.profitSplit * 100).toFixed(0)}%</span></div>
         <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px dotted ${C.borderHot}`,
-                      color: C.ash, fontSize: 10.5, letterSpacing: 0.1, fontFamily: "var(--mono)" }}>
+                      color: C.ash, fontSize: 11, letterSpacing: 0.08, fontFamily: "var(--mono)", fontWeight: 300 }}>
           {t("stat_footer", { sims: r.nSims.toLocaleString("en-US"), pass: r.nPass, dd: r.nDD, to: r.nTimeout, dll: r.nDLL })}
-          <span style={{ color: C.ember }}>{fmtMoney(r.payout)}</span>
+          <span style={{ color: C.brass }}>{fmtMoney(r.payout)}</span>
         </div>
       </div>
     </div>

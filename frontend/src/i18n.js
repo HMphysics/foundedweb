@@ -23,15 +23,34 @@ export function makeT(lang) {
 export const TRANSLATIONS = {
   es: {
     app_title: "PROP · FORGE",
-    app_subtitle: "oráculo estadístico para el asedio de las cámaras fondeadas",
-    app_tagline: "› oráculo estadístico · cámaras fondeadas",
+    app_subtitle: "monte carlo oracle",
+    app_tagline: "› monte carlo oracle",
     live_badge: "LIVE · CLIENT-SIDE",
-    meta_counter: "{firms} firmas · {plans} planes · v3",
+    meta_counter: "{firms} firmas · {plans} planes",
 
-    // Hero
-    hero_tagline: "el único simulador que te dice cuánto te va a doler",
-    hero_quote: "el mercado no castiga al ignorante.\ncastiga al que ignora su ignorancia.",
-    hero_quote_cite: "gráfico anónimo, 2026",
+    // Tabs
+    tab_01: "CHAMBER",
+    tab_02: "STRATEGY",
+    tab_03: "ORACLE",
+    tab_04: "GLOSS",
+    tab_01_title: "select your chamber",
+    tab_01_hint: "elige la firma y el tamaño de cuenta · o configura los parámetros a mano.",
+    tab_01_epigraph: "⟨ el mercado no castiga al ignorante. castiga al que ignora su ignorancia. ⟩",
+    tab_02_title: "your strategy",
+    tab_02_hint: "introduce las estadísticas de tu backtest · simple si tienes resúmenes, bootstrap si tienes datos.",
+    tab_03_title: "oracle output",
+    tab_03_hint: "los números que salen cuando la simulación termina.",
+    tab_03_empty: "ejecuta una simulación primero · pestaña 02 · STRATEGY",
+    tab_04_title: "glossary",
+    tab_04_hint: "cada término usado en esta herramienta, explicado.",
+
+    btn_next_strategy: "next · strategy →",
+    strategy_empty: "elige una cámara en la pestaña 01 · CHAMBER para configurar tu estrategia.",
+
+    // Hero (legacy keys)
+    hero_tagline: "monte carlo oracle",
+    hero_quote: "el mercado no castiga al ignorante. castiga al que ignora su ignorancia.",
+    hero_quote_cite: "gráfico anónimo",
     hero_quote_author: "— gráfico anónimo",
     hero_firms: "cámaras",
     hero_plans: "planes",
@@ -136,8 +155,8 @@ export const TRANSLATIONS = {
     fee_one_time: "único",
     fee_monthly: "mensual",
 
-    btn_run: "invocar el oráculo",
-    btn_running: "leyendo las entrañas...",
+    btn_run: "ignite simulation",
+    btn_running: "simulating",
     btn_edit: "alterar leyes",
     btn_close: "cerrar",
     btn_reset_preset: "↺ resetear al preset",
@@ -299,19 +318,98 @@ export const TRANSLATIONS = {
 
     size_prefix: "",
     configure_word: "› configurar",
+
+    // Results section titles
+    ledger_chapter_title_timing: "TIMING",
+
+    // Glossary
+    gloss_search_placeholder: "buscar término",
+    gloss_a_title: "SIMULATION METHODS",
+    gloss_b_title: "DRAWDOWN TYPES",
+    gloss_c_title: "FLOOR LOCK",
+    gloss_d_title: "CONSISTENCY RULES",
+    gloss_e_title: "MAE",
+    gloss_f_title: "METRICS OUTPUT",
+    gloss_simple_name: "SIMPLE MODE · gaussian",
+    gloss_simple_body:
+      "genera P&Ls diarios con distribuciones normales separadas para días ganadores y perdedores. rápido, simple. asume que tus retornos siguen una curva de gauss — lo cual NO es cierto en trading real. subestima colas gordas (outliers).\n\n→ úsalo si solo tienes medias y desviaciones de tu backtest\n→ evítalo si tu estrategia tiene días extremos (NFP, FOMC, catalizadores)",
+    gloss_bootstrap_name: "BOOTSTRAP MODE · empirical",
+    gloss_bootstrap_body:
+      "en lugar de asumir una distribución, toma muestras aleatorias de una lista de P&Ls diarios que tú pegas directamente de tu backtest. preserva la asimetría y las colas reales de tu estrategia. mucho más honesto matemáticamente.\n\n→ úsalo si tienes al menos 100 días de backtest reales\n→ requiere pegar los datos (txt, csv, una columna con números)",
+    gloss_static_name: "STATIC DRAWDOWN",
+    gloss_static_body:
+      "el floor de pérdida máxima está fijo en capital − ddValue. nunca se mueve. el más permisivo. usado por FTMO, FundedNext CFD, FundingPips, The5%ers.\n\nejemplo: 100K con 10% DD → floor en 90K, siempre.",
+    gloss_teod_name: "TRAILING EOD",
+    gloss_teod_body:
+      "el floor sube basándose solo en el balance al cierre del día. intraday puedes aguantar dips sin fallar. mucho más realista para trading humano. usado por Topstep, Tradeify, MFFU.\n\nejemplo: cierras el día en 52K (capital 50K, DD 2K) → floor sube a 50K. al día siguiente empiezas con 50K de colchón.",
+    gloss_tintraday_name: "TRAILING INTRADAY",
+    gloss_tintraday_body:
+      "el floor sube tick-a-tick con los picos de equity, incluyendo ganancias no realizadas. el más estricto — te castiga por tener unrealized profit y no cerrarlo. usado por Apex Intraday, MFFU Rapid, TPT PRO.\n\nejemplo: a media mañana vas +3K unrealized → floor ya subió 3K. si devuelves esa ganancia, el floor queda arriba.",
+    gloss_fl_none_name: "NONE",
+    gloss_fl_none_body:
+      "el floor nunca se ancla, sigue subiendo para siempre. topstep eval funciona así: tu DD trail nunca se relaja.",
+    gloss_fl_cap_name: "AT_CAPITAL",
+    gloss_fl_cap_body:
+      "el floor para de subir cuando llega al capital inicial. a partir de ahí no puede bajar por debajo del punto de partida. usado en TPT, TradeDay, Leeloo, Earn2Trade.",
+    gloss_fl_target_name: "AT_TARGET_LEVEL",
+    gloss_fl_target_body:
+      "el floor se ancla en capital + target (ej. 53K para un 50K con 3K de target). apex hace esto: una vez pasas eval, ya no te pueden tocar por debajo del target.",
+    gloss_fl_cap100_name: "AT_CAPITAL_PLUS_100",
+    gloss_fl_cap100_body:
+      "el floor queda anclado en capital + $100 una vez el balance EOD supera capital + ddValue + 100. tradeify, fundednext, mffu, phidias. modelo \"margen de cortesía\".",
+    gloss_cons_target_name: "VS_TARGET · estilo topstep",
+    gloss_cons_target_body:
+      "si un día ganas más del X% del target original, el target EFECTIVO sube a (bestDay / X%). no bloquea el PASS, lo endurece.\n\nejemplo topstep 50K (target 3K, consistency 50%): si un día haces +2K, el nuevo target efectivo es 4K (2K / 0.5).",
+    gloss_cons_total_name: "VS_TOTAL · estilo fundednext",
+    gloss_cons_total_body:
+      "el PASS se bloquea mientras tu mejor día supere el X% del profit acumulado. para desbloquearlo, sigues trading hasta diluir el peso de ese día.\n\nejemplo MFFU 50K (consistency 40%): si tu mejor día es 2K y llevas 3K acumulado, tu ratio es 67% → bloqueado. necesitas seguir ganando hasta que tu mejor día sea ≤ 40% del total.",
+    gloss_mae_name: "MAE · maximum adverse excursion",
+    gloss_mae_body:
+      "MAE es la pérdida máxima unrealized que tuviste durante un día antes de cerrar. si cerraste +500 pero a media mañana ibas -300 en tu posición abierta, tu MAE fue 300.\n\nen trailing intraday DD, el MAE sí mata la cuenta — aunque cierres positivo, si durante el día tocaste el floor, fallaste.\n\nsimple mode genera MAE con una distribución gamma (poco fiable). bootstrap mode puede leer MAE directamente si lo incluyes en tus datos (columna MAE en el CSV).",
+    gloss_ppass_name: "P(PASS)",
+    gloss_ppass_body: "probabilidad de que un intento termine pasando el challenge.",
+    gloss_ev_name: "EV · expected value",
+    gloss_ev_body: "valor esperado por intento: P(PASS) × payout − coste_medio. si EV < 0 pierdes dinero en el largo plazo.",
+    gloss_breakeven_name: "BREAK-EVEN P(PASS)",
+    gloss_breakeven_body: "probabilidad mínima de pasar para que el EV sea positivo. tu P(PASS) real debe superar este umbral.",
+    gloss_bankroll_name: "BANKROLL 95% / 99%",
+    gloss_bankroll_body: "dinero total necesario para tener 95% (o 99%) de probabilidad de pasar al menos una vez. asume intentos independientes.",
+    gloss_days_name: "DAYS TO PASS",
+    gloss_days_body: "distribución de días que tardas en pasar, cuando pasas. media, mediana, p90.",
+    gloss_attempts_name: "ATTEMPT DISTRIBUTION",
+    gloss_attempts_body: "cuántos intentos hasta el primer PASS. mediana geométrica.",
   },
 
   en: {
     app_title: "PROP · FORGE",
-    app_subtitle: "statistical oracle for the siege of funded chambers",
-    app_tagline: "› statistical oracle · funded chambers",
+    app_subtitle: "monte carlo oracle",
+    app_tagline: "› monte carlo oracle",
     live_badge: "LIVE · CLIENT-SIDE",
-    meta_counter: "{firms} firms · {plans} plans · v3",
+    meta_counter: "{firms} firms · {plans} plans",
 
-    // Hero
-    hero_tagline: "the only simulator that tells you how much it'll hurt",
-    hero_quote: "the market doesn't punish the ignorant.\nit punishes those who ignore their ignorance.",
-    hero_quote_cite: "anonymous chartist, 2026",
+    // Tabs
+    tab_01: "CHAMBER",
+    tab_02: "STRATEGY",
+    tab_03: "ORACLE",
+    tab_04: "GLOSS",
+    tab_01_title: "select your chamber",
+    tab_01_hint: "pick the firm and account size · or configure parameters manually.",
+    tab_01_epigraph: "⟨ the market doesn't punish the ignorant. it punishes those who ignore their ignorance. ⟩",
+    tab_02_title: "your strategy",
+    tab_02_hint: "enter your backtest stats · simple for summary stats, bootstrap for real data.",
+    tab_03_title: "oracle output",
+    tab_03_hint: "numbers the simulation spits out.",
+    tab_03_empty: "run a simulation first · tab 02 · STRATEGY",
+    tab_04_title: "glossary",
+    tab_04_hint: "every term used in this tool, explained.",
+
+    btn_next_strategy: "next · strategy →",
+    strategy_empty: "pick a chamber on tab 01 · CHAMBER to configure your strategy.",
+
+    // Hero (legacy)
+    hero_tagline: "monte carlo oracle",
+    hero_quote: "the market doesn't punish the ignorant. it punishes those who ignore their ignorance.",
+    hero_quote_cite: "anonymous chartist",
     hero_quote_author: "— anonymous chart",
     hero_firms: "chambers",
     hero_plans: "plans",
@@ -416,8 +514,8 @@ export const TRANSLATIONS = {
     fee_one_time: "one time",
     fee_monthly: "monthly",
 
-    btn_run: "summon the oracle",
-    btn_running: "reading the entrails...",
+    btn_run: "ignite simulation",
+    btn_running: "simulating",
     btn_edit: "alter laws",
     btn_close: "close",
     btn_reset_preset: "↺ reset to preset",
@@ -579,6 +677,66 @@ export const TRANSLATIONS = {
 
     size_prefix: "",
     configure_word: "› configure",
+
+    // Results section titles
+    ledger_chapter_title_timing: "TIMING",
+
+    // Glossary
+    gloss_search_placeholder: "search term",
+    gloss_a_title: "SIMULATION METHODS",
+    gloss_b_title: "DRAWDOWN TYPES",
+    gloss_c_title: "FLOOR LOCK",
+    gloss_d_title: "CONSISTENCY RULES",
+    gloss_e_title: "MAE",
+    gloss_f_title: "METRICS OUTPUT",
+    gloss_simple_name: "SIMPLE MODE · gaussian",
+    gloss_simple_body:
+      "generates daily P&Ls with separate normal distributions for winning and losing days. fast, simple. assumes your returns follow a Gauss curve — which is NOT true in real trading. underestimates fat tails (outliers).\n\n→ use it when you only have means and standard deviations from your backtest\n→ avoid it if your strategy has extreme days (NFP, FOMC, catalysts)",
+    gloss_bootstrap_name: "BOOTSTRAP MODE · empirical",
+    gloss_bootstrap_body:
+      "instead of assuming a distribution, it samples randomly from a list of daily P&Ls you paste directly from your backtest. preserves the real skewness and tails of your strategy. far more mathematically honest.\n\n→ use it when you have at least 100 days of real backtest\n→ requires pasting the data (txt, csv, one column with numbers)",
+    gloss_static_name: "STATIC DRAWDOWN",
+    gloss_static_body:
+      "the max-loss floor is fixed at capital − ddValue. never moves. the most permissive. used by FTMO, FundedNext CFD, FundingPips, The5%ers.\n\nexample: 100K with 10% DD → floor at 90K, always.",
+    gloss_teod_name: "TRAILING EOD",
+    gloss_teod_body:
+      "floor rises based only on end-of-day balance. intraday you can take dips without failing. far more realistic for human trading. used by Topstep, Tradeify, MFFU.\n\nexample: you close the day at 52K (capital 50K, DD 2K) → floor rises to 50K. next day you start with 50K of cushion.",
+    gloss_tintraday_name: "TRAILING INTRADAY",
+    gloss_tintraday_body:
+      "floor rises tick-by-tick with equity peaks, including unrealized gains. the strictest — punishes you for holding unrealized profit and not closing it. used by Apex Intraday, MFFU Rapid, TPT PRO.\n\nexample: by mid-morning you're +3K unrealized → floor already rose 3K. if you give that profit back, floor stays up.",
+    gloss_fl_none_name: "NONE",
+    gloss_fl_none_body:
+      "the floor never anchors, keeps rising forever. topstep eval works this way: your DD trail never relaxes.",
+    gloss_fl_cap_name: "AT_CAPITAL",
+    gloss_fl_cap_body:
+      "the floor stops rising when it reaches starting capital. from there on it cannot go below the starting point. used in TPT, TradeDay, Leeloo, Earn2Trade.",
+    gloss_fl_target_name: "AT_TARGET_LEVEL",
+    gloss_fl_target_body:
+      "the floor anchors at capital + target (e.g. 53K for a 50K with 3K target). apex does this: once you pass eval, they cannot touch you below the target.",
+    gloss_fl_cap100_name: "AT_CAPITAL_PLUS_100",
+    gloss_fl_cap100_body:
+      "the floor locks at capital + $100 once EOD balance exceeds capital + ddValue + 100. tradeify, fundednext, mffu, phidias. the \"courtesy margin\" model.",
+    gloss_cons_target_name: "VS_TARGET · topstep-style",
+    gloss_cons_target_body:
+      "if a single day earns more than X% of the original target, the EFFECTIVE target rises to (bestDay / X%). does not block PASS, hardens it.\n\nexample topstep 50K (target 3K, consistency 50%): one day you hit +2K → new effective target is 4K (2K / 0.5).",
+    gloss_cons_total_name: "VS_TOTAL · fundednext-style",
+    gloss_cons_total_body:
+      "PASS is blocked while your best day exceeds X% of cumulative profit. to unblock it, keep trading until that day's weight dilutes.\n\nexample MFFU 50K (consistency 40%): best day 2K, cumulative 3K → ratio 67% → blocked. keep earning until best-day ≤ 40% of total.",
+    gloss_mae_name: "MAE · maximum adverse excursion",
+    gloss_mae_body:
+      "MAE is the maximum unrealized loss during a day before closing. closed +500 but at mid-morning you were -300 on your open position → MAE was 300.\n\non trailing intraday DD, MAE does kill the account — even if you close positive, if at any point during the day you touched the floor, you failed.\n\nsimple mode generates MAE via a gamma distribution (unreliable). bootstrap mode can read MAE directly if you include it in your data (MAE column in the CSV).",
+    gloss_ppass_name: "P(PASS)",
+    gloss_ppass_body: "probability that an attempt ends up passing the challenge.",
+    gloss_ev_name: "EV · expected value",
+    gloss_ev_body: "expected value per attempt: P(PASS) × payout − avg_cost. if EV < 0 you lose money in the long run.",
+    gloss_breakeven_name: "BREAK-EVEN P(PASS)",
+    gloss_breakeven_body: "minimum probability of passing for EV to be positive. your actual P(PASS) must exceed this threshold.",
+    gloss_bankroll_name: "BANKROLL 95% / 99%",
+    gloss_bankroll_body: "total money required to have 95% (or 99%) probability of passing at least once. assumes independent attempts.",
+    gloss_days_name: "DAYS TO PASS",
+    gloss_days_body: "distribution of days taken to pass, when you pass. mean, median, p90.",
+    gloss_attempts_name: "ATTEMPT DISTRIBUTION",
+    gloss_attempts_body: "how many attempts until the first PASS. geometric median.",
   },
 };
 

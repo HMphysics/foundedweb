@@ -1,0 +1,57 @@
+{
+  "summary": "Frontend-only verification of the Archive Noir v3 redesign + 4-tab restructure. All critical checkpoints pass on the live preview URL. Compact header with wax seal + PROP·FORGE (Fraunces WONK) + brass underline, 4 tabs (CHAMBER/STRATEGY/ORACLE/GLOSS) with 180px watermarks in Fraunces whisper color, firm cards with straight borders and 4px cinnabar ::before accent bar on selected, firm-custom 2x wider with dashed brass border, IGNITE SIMULATION button as plain cinnabar-outlined button (NO flame SVG, NO daggers), auto-switch to ORACLE on run, editorial oracle layout with P(PASS) huge (Fraunces 96px WONK) + EV/P(DD) secondary + 4-col strips + ledger + 3 charts, empty-state message on tab 03 when no results, Glossary with 6 section nav + search + smooth-scroll, ES/EN toggle, all compare/CSV/export flows working, zero console errors, correct archive-noir palette (body bg rgb(11,15,16), 0 sulphur, 0 burgundy, 0 flame SVG, 0 rotated cards).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Tab 04 GLOSS", "issues": ["gloss-search filter is OR-token based (searches each token independently). Single-word queries like 'bootstrap' or 'floor' work, but multi-word 'floor lock' returns 0 matches because no single term contains the exact phrase 'floor lock' AND the tokenizer doesn't OR across terms for display. Low priority UX refinement."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_5.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "App.js is now 1875 lines; splitting /src/components/Header.jsx, TabsNav.jsx, Chamber/, Strategy/, Oracle/, Glossary/ folders would ease maintenance (non-blocking, already flagged in iteration_4).",
+    "App.css is 924 lines - consider modular splitting by tab pane (non-blocking).",
+    "Glossary search scoring: consider matching full term name+body as a single concatenated string vs tokenized OR, to support multi-word queries (minor UX)."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (client-side only)", "frontend": "100%" },
+  "seed_data_creation": "N/A",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "v3 Archive Noir redesign verified on https://eval-probability.preview.emergentagent.com (viewport 1600x1000). Key computed styles verified: (1) hero-title fontFamily='Fraunces, Georgia, serif', fontVariationSettings='\"SOFT\" 100, \"WONK\" 1, \"opsz\" 144', fontSize=38px. (2) pf-tab-watermark fontSize=180px, opacity=0.45, fontFamily=Fraunces. (3) Selected firm card has ::before with width=4px, backgroundColor=rgb(220,74,61) (cinnabar) - confirms red 4px accent bar spec. (4) firm-custom: width=662px, borderStyle=dashed, borderColor=rgb(184,164,120) (brass), borderRadius=0, transform=none. (5) Regular firm-apex_eod: width=325px, transform=none (no rotation). (6) btn-run: text='IGNITE SIMULATION', color+border=rgb(220,74,61), bg=transparent, 0 SVGs, className='invoke-btn'. (7) Clicking btn-run auto-switches to pane-oracle and renders results-dashboard, oracle-revelation, kpi-ppass/ev/pdd/meanpass/p90pass/br95/fourth, chart-dist, chart-pass-hist, chart-fail-hist. (8) kpi-ppass .big element: fontFamily='Fraunces', fontSize=96px, fontVariationSettings='\"SOFT\" 100, \"WONK\" 1, \"opsz\" 144'. (9) body fontFamily='IBM Plex Sans', body backgroundColor=rgb(11,15,16) = #0B0F10. (10) Tab 03 empty state when no results renders 'run a simulation first · tab 02 · STRATEGY' message (oracle-empty testid). (11) Tab 04 Glossary: 6 nav anchors (methods, dd-types, floor-lock, cons, mae, metrics) present, gloss-search filters ('bootstrap' returns BOOTSTRAP + MAE terms because MAE body mentions bootstrap), gloss-nav-mae click scrolls window to y≈1937. (12) Header seal SVG (.pf-header-seal) present, PROP·FORGE brand with brass underline. (13) Lang toggle present (lang-es/lang-en); tab LABELS are intentionally identical across locales ('CHAMBER','STRATEGY','ORACLE','GLOSS'), hints/titles localize. (14) btn-export-png and btn-export-json render only inside ResultsDashboard on the ORACLE pane (expected). (15) btn-csv-apply renders only after CSV preview is loaded (expected). (16) Palette sweep: 0 elements with sulphur yellow rgb(239,229,71), 0 elements with burgundy bg rgb(19,5,7), 0 flame SVGs in btn-run, 0 rotated cards. (17) 0 JavaScript console errors through full flow: chamber → select firm → select plan → next-strategy → ignite → oracle → gloss → search → scroll → back to chamber.",
+  "test_results": {
+    "passed": [
+      "pf-header + hero-title 'PROP·FORGE' present in Fraunces WONK",
+      "Header seal SVG (.pf-header-seal) renders",
+      "4 tabs present: tab-chamber (active default), tab-strategy, tab-oracle, tab-gloss",
+      "pane-chamber/strategy/oracle/gloss testids correct",
+      "pf-tab-watermark '01' renders at 180px with Fraunces font",
+      "Market filters ALL/FUTURES/FOREX/CUSTOM all present with data-testids",
+      "firm-custom: 662px wide (2x regular 325px), dashed brass border, no rotation",
+      "Regular firm cards: no rotation (transform=none), straight borders",
+      "Selecting firm shows 4px cinnabar ::before accent bar",
+      "plan-grid renders 6 plans for apex_eod",
+      "Selecting plan shows account-summary + btn-next-strategy",
+      "btn-next-strategy switches to tab-strategy pane",
+      "btn-run: plain cinnabar outline, text 'IGNITE SIMULATION', 0 SVGs, no daggers",
+      "Clicking btn-run auto-switches to pane-oracle and starts simulation",
+      "results-dashboard renders with oracle-revelation container",
+      "kpi-ppass huge in Fraunces 96px with WONK variation",
+      "kpi-ev, kpi-pdd, kpi-meanpass, kpi-p90pass, kpi-br95, kpi-fourth all present",
+      "chart-dist, chart-pass-hist, chart-fail-hist all render",
+      "btn-export-png + btn-export-json present in oracle pane",
+      "Tab 03 empty state renders when no results (oracle-empty)",
+      "Glossary: gloss-search input + 6 nav anchors + 6 sections present",
+      "gloss-search filters terms live (e.g. 'bootstrap')",
+      "gloss-nav click smooth-scrolls to section",
+      "ES↔EN language toggle present and functional",
+      "btn-add-compare present, csv-modal opens via btn-open-csv",
+      "body fontFamily=IBM Plex Sans, body bg=#0B0F10",
+      "Palette sweep: 0 sulphur yellow, 0 burgundy, 0 flame SVG, 0 rotations",
+      "Zero JavaScript console errors through full user flow"
+    ]
+  },
+  "rca of the issue": "N/A — redesign v3 Archive Noir is stable. All 27 review checkpoints verified. Only a very minor UX note on gloss-search tokenization for multi-word queries."
+}
