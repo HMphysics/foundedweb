@@ -1,82 +1,63 @@
-# PROP FIRM MONTE CARLO SIMULATOR — PRD
+# PROP · FORGE — Monte Carlo Oracle · PRD
 
 ## Problem Statement
-Single-page React app for prop-firm traders. User selects a firm + account plan (or fully custom), enters backtest statistics (manually or calibrated from historical CSV), runs a Monte Carlo simulation, compares several plans side-by-side, and exports results as PNG/JSON.
+Client-side React SPA for prop-firm traders to estimate probability of passing a challenge via Monte Carlo simulation. User selects a firm + plan (or custom), inputs backtest statistics (manually or from CSV), runs simulation, compares plans, and exports results.
 
 ## Architecture
-- **Frontend only** — React SPA, no backend, no persistence, no external APIs
-- Client-side Monte Carlo wrapped in `setTimeout` to let loading render
-- Stack: React 19, Recharts, Tailwind utilities + CSS variables, `html-to-image` for PNG export
+- **Frontend only** — React 19 SPA, no backend, no persistence, no external APIs.
+- Client-side Monte Carlo engine with `setTimeout` yield for loading state.
+- Stack: React 19, Recharts, CSS variables, `html-to-image` for PNG export.
 
-## Visual Theme — "THE ORACLE" (v4, Feb 2026)
-Replaces the former FORGE theme with a ceremonial/mystical aesthetic — the trader *invokes an oracle*, not runs a simulation.
-- **Palette (TEMPLO)**: void `#050302`, obsidian `#0D0806`, ember-bed `#1A0F0A`, ash `#2D1F15`, whisper `#3D3228`, gold-leaf `#B8860B` (primary), sulphur `#E8B923` (highlight), ember red `#C1272D`, blood `#8B0000` (fatal), bone `#E8DCC4`, parchment `#C4B59E`, shade `#6B5A47`.
-- **Typography**: triple stack — **Cinzel** (titles, uppercase, 0.15–0.3em tracking), **Cormorant Garamond italic** (subtitles, hints, labels, tooltips), **JetBrains Mono 300** (numbers only, large KPIs).
-- **Signature elements**: 70vh Hero with sigil SVG + literary quote, roman-numeral step heads (`PRIMVS · I`, `SECVNDVS · II`…), radial revelation layout (P(PASS) in gold-bordered center circle surrounded by 6 peripheral KPIs), difficulty flames on firm cards, ornate corner brackets on panels, grain + vignette fixed overlays, Cinzel IGNITE button ("INVOCAR EL ORÁCULO"), ledger-style stats row.
+## Visual Theme — "Archive Noir" (v3, Feb 2026)
+Final direction after two prior iterations (v1 Oracle gold-on-black, v2 Sulphur on Burgundy). The user rejected both — v3 commits to a cool, contained editorial aesthetic.
+
+- **Palette**: ink `#0B0F10` base, archive/leather panels, dust/haze borders. Cinnabar red `#DC4A3D` is the single warm accent (used only on critical CTAs and selected states). Brass `#B8A478` replaces gold. Bone `#D4CDB8` text, linen/steel/smoke secondary. NO sulphur yellow, NO burgundy.
+- **Typography**: IBM Plex Sans 300-600 (UI), JetBrains Mono 300 (data), Fraunces WONK 900 (display — used sparingly, max 3 visible elements per screen).
+- **Decoration**: one 34px wax seal SVG in the header. Nothing else. No tarot, chains, coin, stain, flame, rotation, or irregular borders.
+
+## Structure — 4 Tabs
+1. **01 · CHAMBER** — firm grid (Custom card 2x span with dashed brass border + ✦), market filters (ALL/FUTURES/FOREX/CUSTOM), plan grid, natural-language account summary, "next · strategy →" CTA.
+2. **02 · STRATEGY** — 2-col layout: strategy inputs (wr, μ, σ, tail, MAE collapsed) + CSV calibrate on left; account editor + nSims slider + IGNITE button + add-to-compare + compare rack on right.
+3. **03 · ORACLE** — editorial results layout: huge P(PASS) in Fraunces WONK (left) + EV + P(DD) as secondary KPIs (right). Below: 4-col distribution strip, 4-col timing strip, 3 charts, ledger. Compare results appended below single-run results. Empty state if no simulation yet.
+4. **04 · GLOSS** — glossary with sticky nav (6 sections: A methods, B dd-types, C floor-lock, D consistency, E MAE, F metrics), search input with live filtering, smooth-scroll anchors.
+
+Each tab body has an 180px Fraunces watermark number (01-04) in whisper color as silent marker. Kicker · Title · Hint · (Epigraph only in tab 01).
 
 ## File Layout
 ```
 /app/frontend/src/
-├── App.js              # Main component: Hero, Sigil, OrnateDivider, radial ResultsDashboard
-├── App.css             # TEMPLO palette + Cinzel/Cormorant/Mono utilities + radial grid + grain
-├── index.js / index.css
-├── firmDatabase.js     # 22 firms × ~74 plans + STRATEGY_DEFAULTS (unchanged)
-├── monteCarlo.js       # simulation engine (unchanged)
-├── csvCalibrate.js     # CSV parser + strategy calibration (unchanged)
-└── i18n.js             # ES/EN dictionaries w/ ceremonial microcopy + TOOLTIPS
+├── App.js              # Main — Header, tabs, Glossary, AppInner router, ResultsDashboard editorial
+├── App.css             # Archive noir palette, IBM Plex Sans / Fraunces / Mono, tabs, cards, oracle-editorial, glossary
+├── firmDatabase.js     # 22 firms × 74 plans + STRATEGY_DEFAULTS (UNCHANGED)
+├── monteCarlo.js       # Simulation engine (UNCHANGED)
+├── csvCalibrate.js     # CSV parser + strategy calibration (UNCHANGED)
+└── i18n.js             # ES/EN dictionaries with sober microcopy + 26 glossary keys per locale
 ```
 
-## Implemented
-
-### Core (iteration 1 — 19/19 tests passed, Apr 2026)
-- [x] 22 firms × 74 plans · market filter · 3-step flow
-- [x] Custom editor for all plan params (ddType, floorLock, DLL, consistency, phases, phase2, fees, split)
-- [x] Monte Carlo engine (normal/gamma PDF, MAE intraday, MFE floor, 2-phase reset, monthly fee metering)
-- [x] 8 KPI cards + 3 Recharts histograms + 6-metric stats row + contextual warnings
-- [x] MODIFIED amber badge + reset-to-preset
-
-### Extensions (iteration 2 — 18/18 tests passed)
-- [x] **COMPARE MODE** — up to 4 plans side-by-side, ranked by EV, per-metric winners highlighted
-- [x] **EXPORT PNG / JSON** — both single-run and compare-view exportable
-- [x] **CSV CALIBRATION** — auto-detects delimiter + column, computes wr/μ/σ/tail stats, preview + apply
-
-### Addendum v3 (iteration 3 preparation)
-- [x] **i18n ES/EN** with browser detection + toggle
-- [x] **Custom-first UI** — Custom card pinned at grid origin, enlarged, dashed gold border
-- [x] **Welcome/tutorial block** collapsible
-- [x] **Info tooltips** (ⓘ) on complex concepts: dd_type, floor_lock, consistency, MAE, DLL, phases, EV, bankroll, break-even, WR, μ/σ, spike
-- [x] **Natural-language account summary** under step 2
-
-### THE ORACLE redesign (iteration 3, Feb 2026 — 18/18 tests passed, 100% frontend)
-- [x] **Hero** — 70vh ceremonial opener: sigil SVG, Cinzel 96px title, Cormorant italic tagline + quote, ornate divider, dot-row, meta counter (chambers · plans · client-side rite)
-- [x] **Sticky top rail** with brand + lang toggle + help + compact counter
-- [x] **Roman-numeral step heads** via `ROMAN_PREFIX` constant (PRIMVS → QVINTVS) with Cormorant italic subtitles + ornate divider
-- [x] **Radial revelation** (3x3 grid, P(PASS) center w/ gold border ornament and ※ glyphs, 6 peripheral KPIs with stagger animation)
-- [x] **Firm difficulty flames** (1–3 ✦) estimated from ddType + fatalDLL + phases + consistency
-- [x] **Custom firm card 2x** — `grid-column: span 2`, dashed gold-leaf border, anvil SVG, Cinzel title
-- [x] **Ceremonial IGNITE button** — Cinzel 0.3em tracking, decorative corner brackets, pulsing ember border during loading
-- [x] **Ledger stats row** — old-book style with dotted dividers, Cormorant italic keys, mono values
-- [x] **Grain + vignette** fixed background overlays (SVG fractalNoise + radial gradients)
-- [x] **Candle-flicker** animation on hero sigil
-- [x] **Microcopy rewrite** — ritual voice in hints/subtitles, clarity preserved in labels (invocar/oráculo/cámara/ofrenda/craft/tributo…)
-
-## User Personas
-- Futures prop-firm traders (Apex, Topstep, Tradeify, MFFU, FundedNext, TPT, TradeDay, E2T, Leeloo, Phidias)
-- Forex/multi-asset traders (FTMO, FundedNext Stellar, The 5%ers, FundingPips)
-- Quant/algo traders wanting full custom control and CSV calibration from backtest logs
+## Implemented (Feb 2026)
+- ✅ Core simulator, 22 firms × 74 plans, Monte Carlo engine, MAE intraday, 2-phase reset, fees (iterations 1-2)
+- ✅ Compare Mode up to 4 plans · PNG/JSON export · CSV calibration (iteration 2)
+- ✅ ES/EN i18n + Custom-first + tooltips + account summary (iteration 3)
+- ✅ Full visual redesign to Archive Noir + 4-tab structure + Glossary (iteration 5, Feb 2026)
+- ✅ Deployment fixes: Procfile, requirements.txt cleanup, date-fns pin to 3.6.0, removed react-day-picker, react-is added, .npmrc legacy-peer-deps
 
 ## Prioritized Backlog
 ### P1
-- Shareable URL-encoded plan+strategy config (compact hash in URL, no storage)
-- Post-PASS payout lifecycle simulation (funded account drawdowns, payout caps)
+- **Bootstrap mode** — empirical sampling from pasted daily P&L list (tab-02 toggle; glossary entry already documents both modes)
+- Shareable URL-encoded plan+strategy config (hash in query string)
+- Post-PASS payout lifecycle simulation
 
 ### P2
-- Multi-attempt equity curve visualization (play N attempts sequentially)
-- Save/load named strategy presets in URL query string
+- Multi-attempt equity curve visualization
 - Drag reorder of compare slots
-- Alternative "DAYLIGHT" theme (keep ORACLE as default)
+- "Daylight" alt theme
 
-## Verified Sanity Checks
-- Apex 50K Intraday · defaults → P(PASS) ≈ 23–25%, EV ≈ +$430, P(Timeout) ≈ 65% (due to 30d max)
-- FTMO 50K 2-phase · defaults → P(PASS) ≈ 2.4%, EV ≈ -$300 (fatal DLL bites)
-- Apex 50K Intraday · calibrated from 90d sample (wr=0.57, μwin=$406) → P(PASS) ≈ 86%, EV ≈ +$2,100
+## User Personas
+- Futures prop-firm traders (Apex, Topstep, Tradeify, MFFU, FundedNext, TPT, TradeDay, Leeloo, Phidias)
+- Forex traders (FTMO, FundedNext Stellar, The5%ers, FundingPips)
+- Quant traders using custom config + CSV calibration from backtest logs
+
+## Sanity Checks
+- Apex 50K Intraday · defaults → P(PASS) ≈ 23–25%, EV ≈ +$430, P(Timeout) ≈ 65%
+- FTMO 50K 2-phase · defaults → P(PASS) ≈ 2.4%, EV ≈ -$300
+- Apex 50K Intraday · calibrated from 90d sample → P(PASS) ≈ 86%, EV ≈ +$2,100
