@@ -22,13 +22,18 @@ export function AuthProvider({ children }) {
 
   const signUp = async (email, password) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
+    if (error) {
+      // Create a clean error object to avoid "body stream already read" issues
+      throw new Error(error.message || 'Registration failed');
+    }
     return data;
   };
 
   const signIn = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    if (error) {
+      throw new Error(error.message || 'Login failed');
+    }
     return data;
   };
 

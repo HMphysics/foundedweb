@@ -35,7 +35,9 @@ export default function AuthModal({ onClose }) {
       }
       onClose();
     } catch (err) {
-      setError(err.message);
+      // Handle various error formats from Supabase
+      const message = err?.message || err?.error_description || err?.msg || 'An error occurred';
+      setError(message);
     } finally {
       setLoading(false);
     }
