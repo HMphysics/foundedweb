@@ -55,11 +55,17 @@ Each tab has an 180px Fraunces watermark number (01-04).
 - ✅ **Bootstrap mode + commissions + behavioral + instrument MAE + attempt curve (iteration 6, Feb 2026)** — 15/15 frontend tests passed, 0 console errors
 - ✅ Deployment fixes (Procfile, requirements clean, date-fns pin, react-day-picker removal, react-is add, .npmrc)
 - ✅ **Ciclo post-PASS — funded-account + payouts simulation (iteration 7, Feb 2026)** — 14/14 frontend tests passed, 100% success rate, 0 console errors. Added: `simulateFundedPhase` engine, `FUNDED_DEFAULTS` + per-firm overrides + `resolveFundedRules` in `firmDatabase.js`, new `PostPassSection` in STRATEGY (toggle + horizon slider 1–24m + size mode same/reduced + 15 rule overrides), new `FundedLifecyclePanel` in ORACLE (NET expected, Lifetime EV, mean payouts, P(survive) 3/6/12m, time-to-first-payout median, breach breakdown, 3 charts: net-hist, payout-count-hist, net-by-month). Glossary extended with CICLO POST-PASS / SAFETY NET / CONSISTENCY POST-PASS. Also fixed broken `en:` wrapper in i18n.js left by previous session.
+- ✅ **PASO 3 · Cleanup + Polish (iterations 8-9, Feb 2026)** — 13/13 checkpoints passed.
+  - TAREA 1: Unified palette — `C` object renamed to Archive Noir tokens (ink/archive/leather/dust/haze/cinnabar/oxide/brass/bone/linen/steel/smoke/whisper), moved to `src/lib/colors.js`. 260+ call sites updated, zero legacy color leaks.
+  - TAREA 2: Refactored App.js from 2689 → 1532 lines. Extracted modules: `lib/colors.js`, `lib/format.js`, `lib/export.js`, `components/LangContext.jsx`, `components/Glossary.jsx`, `components/CsvModal.jsx`, `components/charting.jsx` (CTooltip/ChartTitle/EmptyChart), `components/shared/ui.jsx` (10 atoms), `components/oracle/FundedLifecyclePanel.jsx`, `components/strategy/StrategySections.jsx` (all 7 sections). App.js is now an orchestrator (state + handlers + tab routing + remaining display components: Header/Footer/FirmCard/PlanCard/AccountSummary/AccountEditor/ResultsDashboard/CompareRack/CompareResults). Under 300 lines was not reached in this pass — remaining 1532 lines contain ~11 display components (Oracle dashboard is ~400 lines alone) that can be extracted in a future pass.
+  - TAREA 3: IGNITE button disabled-state hints — new testids `ignite-hint` + `ignite-hint-link` with 3 contextual messages (chamber_missing / bootstrap_empty / bootstrap_too_few), plus CSS variant under App.css. BootstrapInput textarea now live-parses so the hint reflects real-time count.
+  - TAREA 4: Glossary audit — added WINNING DAYS and CALENDAR vs TRADING DAYS terms in section H (OPERATIONS) with numeric examples, both ES and EN.
 
 ## Prioritized Backlog
 ### P1
 - Shareable URL-encoded plan+strategy config (hash in query string)
 - CSV dual-use: SIMPLE summary vs BOOTSTRAP literal
+- Finish App.js refactor (target <300 lines) — extract Oracle dashboard, FirmCard/PlanCard, AccountEditor/AccountSummary, CompareRack/CompareResults into their own files.
 
 ### P2
 - Multi-attempt equity curve visualization
