@@ -522,6 +522,17 @@ export const TRANSLATIONS = {
     gloss_safetynet_body: "cantidad de profit que debes acumular antes de poder retirar sin restricciones (Apex). hasta alcanzarlo, los payouts están capados.",
     gloss_consistency_postpass_name: "CONSISTENCY POST-PASS",
     gloss_consistency_postpass_body: "algunas firmas aplican consistency rule en la cuenta fondeada (Topstep 50%, MFFU 40%, TPT 20%). si la violas, no puedes retirar — aunque tengas profit disponible.",
+
+    // IGNITE button disabled-state hints
+    hint_no_chamber:       "selecciona primero una firma y una cuenta en la pestaña chamber",
+    hint_bootstrap_empty:  "modo bootstrap activo · pega tus datos de backtest en la sección P&L",
+    hint_bootstrap_too_few:"necesitas al menos 30 valores · llevas {n}",
+
+    // Extra glossary terms
+    gloss_winning_days_name: "WINNING DAYS",
+    gloss_winning_days_body: "cuando una firma exige un mínimo de días tradeados, puede contar TODOS los días (total) o solo los ganadores (≥ $X). el modo 'WINNING DAYS ONLY' ignora los días planos/negativos, lo que suele alargar el camino hasta el PASS pero refleja mejor lo que algunas firmas exigen internamente para validar la cuenta.\n\nejemplo: minDays=5 con winning-days y threshold $50 → necesitas 5 días con pnl ≥ $50, no solo 5 días de trading.",
+    gloss_calendar_days_name: "CALENDAR vs TRADING DAYS",
+    gloss_calendar_days_body: "el contador de máximo de días puede medirse en días de trading (~21/mes, ignora weekends) o en días de calendario (incluye weekends). Apex usa CALENDAR — es más estricto. FTMO usa TRADING — más permisivo.\n\nejemplo FTMO 100K (máx 30 trading days) vs Apex 50K EOD (máx 30 calendar days): aunque el número es idéntico (30), Apex te da ~21 días reales de trading efectivo, mientras FTMO te da ~42 días naturales para cerrar los 30 tradeables.",
   },
   en: {
     app_title: "PROP · FORGE",
@@ -1016,6 +1027,17 @@ export const TRANSLATIONS = {
     gloss_safetynet_body: "amount of profit you must accumulate before unrestricted withdrawals (Apex-style). until reached, payouts are capped.",
     gloss_consistency_postpass_name: "POST-PASS CONSISTENCY",
     gloss_consistency_postpass_body: "some firms apply a consistency rule on the funded account (Topstep 50%, MFFU 40%, TPT 20%). if you violate it, you cannot withdraw — even if profit is available.",
+
+    // IGNITE button disabled-state hints
+    hint_no_chamber:       "first select a firm and an account in the chamber tab",
+    hint_bootstrap_empty:  "bootstrap mode active · paste your backtest data in the P&L section",
+    hint_bootstrap_too_few:"need at least 30 values · you have {n}",
+
+    // Extra glossary terms
+    gloss_winning_days_name: "WINNING DAYS",
+    gloss_winning_days_body: "when a firm requires a minimum number of trading days, they can either count ALL days (total) or only winning days (≥ $X). the 'WINNING DAYS ONLY' mode ignores flat/losing days, which typically lengthens the path to PASS but better reflects what some firms internally require to validate the account.\n\nexample: minDays=5 with winning-days mode and $50 threshold → you need 5 days with pnl ≥ $50, not just 5 trading days.",
+    gloss_calendar_days_name: "CALENDAR vs TRADING DAYS",
+    gloss_calendar_days_body: "the max-days counter can be measured in trading days (~21/mo, weekends ignored) or in calendar days (includes weekends). Apex uses CALENDAR — stricter. FTMO uses TRADING — more lenient.\n\nexample FTMO 100K (max 30 trading days) vs Apex 50K EOD (max 30 calendar days): the number is identical (30), but Apex gives you ~21 actual tradable days, while FTMO gives you ~42 natural days to complete the 30 tradable ones.",
   },
 };
 

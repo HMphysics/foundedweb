@@ -1,67 +1,36 @@
-import React, { useState, useMemo, useCallback, useRef, useContext, createContext, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import "./App.css";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   ReferenceLine, Cell,
 } from "recharts";
-import { toPng } from "html-to-image";
 import { FIRM_DATABASE, STRATEGY_DEFAULTS, resolveFundedRules } from "./firmDatabase";
-import { runMonteCarlo, parseBootstrapData, INSTRUMENT_MAE_RATIOS } from "./monteCarlo";
-import { parseCsv, detectColumns, extractColumn, calibrateStrategy } from "./csvCalibrate";
-import { makeT, detectBrowserLang, TOOLTIPS } from "./i18n";
+import { runMonteCarlo } from "./monteCarlo";
+import { TOOLTIPS } from "./i18n";
+import { C } from "./lib/colors";
+import { fmtMoney, fmtPct, fmtInt, isPlanModified } from "./lib/format";
+import { downloadJSON, exportPNG as exportPNGHelper } from "./lib/export";
+import { LangProvider, useT } from "./components/LangContext";
+import Glossary from "./components/Glossary";
+import CsvModal from "./components/CsvModal";
+import FundedLifecyclePanel from "./components/oracle/FundedLifecyclePanel";
+import { CTooltip, ChartTitle, EmptyChart } from "./components/charting";
+import {
+  Tag, SectionBar, Toggle, InfoTooltip, NumField, SelectField,
+  ToggleRow, Kpi, Warn, Collapsible,
+} from "./components/shared/ui";
+import {
+  ModeSelector, PnLDistributionSection, IntradayRiskSection,
+  CostsSection, BehavioralSection, PostPassSection,
+} from "./components/strategy/StrategySections";
 
 // ─────────────────────────── Archive Noir palette v3 ───────────────────────────
-const C = {
-  bg: "#0B0F10", panel: "#12171A", elev: "#1A2025",
-  border: "#2A3238", borderHot: "#3D4850",
-  ember: "#B8A478", flame: "#DC4A3D", blood: "#DC4A3D", bloodDark: "#7A2E1F",
-  char: "#12171A", ash: "#5C6670",
-  bone: "#D4CDB8", boneDim: "#9AA39C",
-  steel: "#7D8F9A", brass: "#B8A478", verdigris: "#5B7A6F",
-};
+// Moved to src/lib/colors.js — imported above as `C`.
+// Formatting helpers: src/lib/format.js
+// Download/export: src/lib/export.js
+// Language context + useT hook: src/components/LangContext.jsx
 
-const LangCtx = createContext({ lang: "en", t: makeT("en"), setLang: () => {} });
-const useT = () => useContext(LangCtx);
 
-// helpers
-function fmtMoney(n, decimals = 0) {
-  if (n === null || n === undefined || !isFinite(n)) return "—";
-  const sign = n < 0 ? "-" : "";
-  const abs = Math.abs(n);
-  return sign + "$" + abs.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-}
-const fmtPct = (n, d = 2) => !isFinite(n) ? "—" : (n * 100).toFixed(d) + "%";
-const fmtInt = (n) => !isFinite(n) ? "—" : Math.round(n).toLocaleString("en-US");
-
-function isPlanModified(plan, presetPlan) {
-  if (!presetPlan) return false;
-  const keys = ["capital","target","ddType","ddValue","floorLock","dailyLoss",
-    "dailyLossIsFatal","consistency","consistencyType","minDays","maxDays",
-    "phases","fee","activationFee","feeType","profitSplit"];
-  for (const k of keys) if ((plan[k] ?? null) !== (presetPlan[k] ?? null)) return true;
-  if (plan.phases === 2) {
-    const a = plan.phase2 || {}, b = presetPlan.phase2 || {};
-    if ((a.target ?? null) !== (b.target ?? null)) return true;
-    if ((a.minDays ?? null) !== (b.minDays ?? null)) return true;
-    if ((a.maxDays ?? null) !== (b.maxDays ?? null)) return true;
-  }
-  return false;
-}
-
-function download(filename, dataUrl) {
-  const a = document.createElement("a");
-  a.href = dataUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
-function downloadJSON(filename, obj) {
-  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  download(filename, url);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 // ─────────────────────────── Minimal decorations (v3 — archive noir) ───────────────────────────
 // Single small wax seal for header.
@@ -93,171 +62,17 @@ const ROMAN = ["", "I", "II", "III", "IV", "V"];
 const ROMAN_PREFIX = ["", "PRIMVS", "SECVNDVS", "TERTIVS", "QVARTVS", "QVINTVS"];
 
 // ─────────────────────────── Atoms ───────────────────────────
-function Tag({ children, color = C.boneDim }) {
-  return <span className="fg-tag" style={{ color }}>{children}</span>;
-}
+// Tag, SectionBar, Toggle, InfoTooltip, NumField, SelectField,
+// ToggleRow, Kpi, Warn moved to src/components/shared/ui.jsx
 
-function SectionBar({ label }) {
-  return (
-    <div className="fg-sec">
-      <span>§ {label}</span>
-      <span style={{ color: C.border, letterSpacing: 0 }}>━━━━━━━━━━</span>
-    </div>
-  );
-}
+// CTooltip moved to src/components/charting.jsx
 
-function Toggle({ on, onChange, testId }) {
-  return (
-    <div className={`fg-toggle ${on ? "on" : ""}`} onClick={() => onChange(!on)}
-         data-testid={testId} role="switch" aria-checked={on} />
-  );
-}
-
-// Info icon + popover tooltip
-function InfoTooltip({ id }) {
-  const { lang } = useT();
-  const [open, setOpen] = useState(false);
-  const tip = TOOLTIPS[lang]?.[id] || TOOLTIPS.en[id];
-  if (!tip) return null;
-  return (
-    <span style={{ position: "relative", display: "inline-flex" }}
-          onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}
-          onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}>
-      <button type="button" tabIndex={0}
-              aria-label={tip.title}
-              data-testid={`tip-${id}`}
-              style={{ background: "transparent", border: "none", cursor: "help",
-                       color: C.ash, fontSize: 11, padding: "0 4px", lineHeight: 1 }}
-              onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}>
-        ⓘ
-      </button>
-      {open && (
-        <div style={{
-          position: "absolute", left: "100%", top: "-4px", marginLeft: 6,
-          width: 320, zIndex: 50,
-          background: C.elev, border: `1px solid ${C.ember}`,
-          padding: 12, boxShadow: "0 0 24px rgba(255,184,0,0.25)",
-          fontFamily: "var(--mono)",
-          pointerEvents: "none",
-        }}>
-          <div style={{ color: C.ember, fontSize: 11, fontWeight: 700, letterSpacing: 0.2,
-                        textTransform: "uppercase", marginBottom: 6 }}>
-            § {tip.title}
-          </div>
-          <div style={{ color: C.boneDim, fontSize: 11, lineHeight: 1.6, whiteSpace: "pre-line" }}>
-            {tip.body}
-          </div>
-        </div>
-      )}
-    </span>
-  );
-}
-
-function NumField({ label, value, onChange, step = 1, disabled = false, prefix, testId, width = 120, tip }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
-      <label className="fg-label" style={{ flex: 1, display: "inline-flex", alignItems: "center" }}>
-        {label}
-        {tip && <InfoTooltip id={tip} />}
-      </label>
-      <div style={{ display: "flex", alignItems: "center", gap: 4, width }}>
-        {prefix && <span style={{ color: C.ash, fontSize: 11 }}>{prefix}</span>}
-        <input
-          type="number" className="fg-input"
-          value={value ?? ""} step={step} disabled={disabled}
-          onChange={(e) => {
-            const v = e.target.value === "" ? null : parseFloat(e.target.value);
-            onChange(isNaN(v) ? null : v);
-          }}
-          data-testid={testId}
-        />
-      </div>
-    </div>
-  );
-}
-
-function SelectField({ label, value, onChange, options, disabled = false, testId, tip }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
-      <label className="fg-label" style={{ flex: 1, display: "inline-flex", alignItems: "center" }}>
-        {label}
-        {tip && <InfoTooltip id={tip} />}
-      </label>
-      <select className="fg-select" style={{ width: 120 }} value={value ?? ""} disabled={disabled}
-              onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
-              data-testid={testId}>
-        {options.map(o => <option key={o.value ?? "null"} value={o.value ?? ""}>{o.label}</option>)}
-      </select>
-    </div>
-  );
-}
-
-function ToggleRow({ label, on, onToggle, testId, tip, children }) {
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <label className="fg-label" style={{ display: "inline-flex", alignItems: "center" }}>
-          {label}
-          {tip && <InfoTooltip id={tip} />}
-        </label>
-        <Toggle on={on} onChange={onToggle} testId={testId} />
-      </div>
-      {on && <div style={{ marginTop: 6, paddingLeft: 8, borderLeft: `1px dashed ${C.borderHot}` }}>{children}</div>}
-    </div>
-  );
-}
-
-function Kpi({ label, value, sub, color = C.bone, testId, tip }) {
-  return (
-    <div className="fg-panel" style={{ padding: "14px 16px" }} data-testid={testId}>
-      <div className="fg-label" style={{ marginBottom: 10, color: C.ash, display: "inline-flex", alignItems: "center" }}>
-        › {label}{tip && <InfoTooltip id={tip} />}
-      </div>
-      <div className="fg-kpi" style={{ color }}>{value}</div>
-      {sub && <div style={{ color: C.ash, fontSize: 10.5, marginTop: 8, letterSpacing: 0.05 }}>› {sub}</div>}
-    </div>
-  );
-}
-
-function Warn({ prefix = "//", children, color = C.ember }) {
-  return (
-    <div style={{
-      display: "flex", gap: 10, padding: "8px 12px",
-      borderLeft: `2px solid ${color}`,
-      background: `${color}0A`,
-      marginBottom: 6, fontSize: 12, lineHeight: 1.55,
-    }}>
-      <div style={{ color, fontWeight: 700, opacity: 0.9 }}>{prefix}</div>
-      <div style={{ color: C.boneDim, flex: 1 }}>{children}</div>
-    </div>
-  );
-}
-
-function CTooltip({ active, payload, label, unit = "%" }) {
-  if (!active || !payload || !payload.length) return null;
-  return (
-    <div style={{
-      background: C.bg, border: `1px solid ${C.ember}`,
-      padding: "6px 10px", fontFamily: "var(--mono)", fontSize: 11,
-      boxShadow: "0 0 16px rgba(255,184,0,0.2)",
-    }}>
-      <div style={{ color: C.ash }}>› {label}</div>
-      <div style={{ color: C.ember }}>{payload[0].value}{unit}</div>
-    </div>
-  );
-}
-
-// ─────────────────────────── Root with LangCtx ───────────────────────────
+// ─────────────────────────── Root with LangProvider ───────────────────────────
 function App() {
-  const [lang, setLang] = useState(detectBrowserLang());
-  const t = useMemo(() => makeT(lang), [lang]);
-  useEffect(() => {
-    document.documentElement.lang = lang;
-  }, [lang]);
   return (
-    <LangCtx.Provider value={{ lang, t, setLang }}>
+    <LangProvider>
       <AppInner />
-    </LangCtx.Provider>
+    </LangProvider>
   );
 }
 
@@ -408,16 +223,7 @@ function AppInner() {
       plan: planDraft, strategy, nSims, results,
     });
   };
-  const exportPNG = async (ref, name) => {
-    if (!ref.current) return;
-    try {
-      const dataUrl = await toPng(ref.current, {
-        backgroundColor: C.bg, pixelRatio: 2, cacheBust: true,
-        style: { fontFamily: "'JetBrains Mono', monospace" },
-      });
-      download(`${name}-${Date.now()}.png`, dataUrl);
-    } catch (e) { console.error(e); }
-  };
+  const exportPNG = (ref, name) => exportPNGHelper(ref, `${name}-${Date.now()}`, C.ink);
   const exportCompareJSON = () => {
     if (!compareSlots.length) return;
     downloadJSON(`propforge-compare-${Date.now()}.json`, {
@@ -430,7 +236,7 @@ function AppInner() {
   const isCustomMode = selectedFirmId === "custom";
 
   return (
-    <div style={{ minHeight: "100vh", color: C.boneDim }} data-testid="app-root">
+    <div style={{ minHeight: "100vh", color: C.linen }} data-testid="app-root">
       <Header />
 
       <div className="pf-tabs-wrap">
@@ -514,7 +320,7 @@ function AppInner() {
             <section style={{ marginTop: 32 }} className="fg-fadein" data-testid="custom-landing">
               <div className="fg-sec">§ {t("step_custom_title")}</div>
               <div className="fg-panel" style={{ padding: 20, borderColor: C.brass, borderStyle: "dashed" }}>
-                <div style={{ color: C.boneDim, fontFamily: "var(--plex)", fontSize: 13.5, lineHeight: 1.7,
+                <div style={{ color: C.linen, fontFamily: "var(--plex)", fontSize: 13.5, lineHeight: 1.7,
                               whiteSpace: "pre-line" }}>
                   {t("step_custom_body")}
                 </div>
@@ -577,11 +383,11 @@ function AppInner() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
                                 marginBottom: showAccountEditor ? 12 : 0 }}>
                     <div style={{ fontSize: 10.5, letterSpacing: 0.3, textTransform: "uppercase",
-                                  color: C.ash, fontWeight: 600, display: "flex", alignItems: "center", gap: 8,
+                                  color: C.smoke, fontWeight: 600, display: "flex", alignItems: "center", gap: 8,
                                   fontFamily: "var(--plex)" }}>
                       <span>§ {t("section_account")}</span>
-                      {isModified && <span style={{ color: C.flame, fontSize: 9, letterSpacing: 0.2, padding: "1px 5px",
-                                                     border: `1px solid ${C.flame}`, background: `${C.flame}15` }}>{t("modified_badge")}</span>}
+                      {isModified && <span style={{ color: C.cinnabar, fontSize: 9, letterSpacing: 0.2, padding: "1px 5px",
+                                                     border: `1px solid ${C.cinnabar}`, background: `${C.cinnabar}15` }}>{t("modified_badge")}</span>}
                     </div>
                     {!isCustomMode && (
                       <button className="fg-btn-ghost"
@@ -617,6 +423,42 @@ function AppInner() {
                         data-testid="btn-run">
                   {loading ? t("btn_running") : t("btn_run")}
                 </button>
+
+                {(() => {
+                  let reason = null;
+                  if (!planDraft) reason = "chamber_missing";
+                  else if (strategy.mode === "bootstrap") {
+                    if (!strategy.bootstrapData || strategy.bootstrapData.length === 0) reason = "bootstrap_empty";
+                    else if (strategy.bootstrapData.length < 30) reason = "bootstrap_too_few";
+                  }
+                  if (!reason || loading) return null;
+                  return (
+                    <div className="ignite-block-hint" data-testid="ignite-hint">
+                      {reason === "chamber_missing" && (
+                        <>
+                          <span className="hint-icon">※</span>
+                          <span>{t("hint_no_chamber")}</span>
+                          <button className="hint-link" onClick={() => setActiveTab("chamber")}
+                                  data-testid="ignite-hint-link">
+                            → {t("tab_01")}
+                          </button>
+                        </>
+                      )}
+                      {reason === "bootstrap_empty" && (
+                        <>
+                          <span className="hint-icon">※</span>
+                          <span>{t("hint_bootstrap_empty")}</span>
+                        </>
+                      )}
+                      {reason === "bootstrap_too_few" && (
+                        <>
+                          <span className="hint-icon">⚠</span>
+                          <span>{t("hint_bootstrap_too_few", { n: strategy.bootstrapData.length })}</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <button className="fg-btn-ghost"
                         onClick={addToCompare}
@@ -699,549 +541,10 @@ function AppInner() {
 }
 
 // ─────────────────────────── Strategy sections (v2 tab STRATEGY) ───────────────────────────
-function Collapsible({ title, testId, badge, badgeColor = C.brass, defaultOpen = false, children }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="fg-panel" style={{ padding: 0 }} data-testid={testId}>
-      <button onClick={() => setOpen(v => !v)}
-              style={{ width: "100%", background: "transparent", border: 0, color: C.boneDim,
-                       padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between",
-                       fontFamily: "var(--plex)", fontSize: 12, letterSpacing: 0.18,
-                       fontWeight: 500, textTransform: "uppercase", cursor: "pointer" }}
-              data-testid={`${testId}-toggle`}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-          <span style={{ color: C.brass, fontFamily: "var(--mono)" }}>{open ? "▼" : "►"}</span>
-          {title}
-          {badge && (
-            <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 7px",
-                           border: `1px solid ${badgeColor}`, color: badgeColor, letterSpacing: 0.1 }}>
-              {badge}
-            </span>
-          )}
-        </span>
-      </button>
-      {open && <div style={{ padding: "0 18px 18px" }}>{children}</div>}
-    </div>
-  );
-}
+// Collapsible moved to src/components/shared/ui.jsx
 
-function ModeSelector({ strategy, setStrategy }) {
-  const { t } = useT();
-  const mode = strategy.mode || "simple";
-  return (
-    <div className="fg-panel" style={{ padding: 16 }} data-testid="mode-selector">
-      <div style={{ fontFamily: "var(--plex)", fontSize: 11, letterSpacing: 0.2,
-                    textTransform: "uppercase", color: C.steel, fontWeight: 500, marginBottom: 10 }}>
-        § {t("mode_title")}
-      </div>
-      <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-        {[
-          { id: "simple",    label: t("mode_simple"),    sub: t("mode_simple_sub") },
-          { id: "bootstrap", label: t("mode_bootstrap"), sub: t("mode_bootstrap_sub") },
-        ].map(m => (
-          <label key={m.id} style={{ flex: 1, minWidth: 200, cursor: "pointer", padding: 12,
-                                      border: `1px solid ${mode === m.id ? C.flame : C.border}`,
-                                      background: mode === m.id ? `${C.flame}10` : "transparent" }}
-                 data-testid={`mode-${m.id}`}>
-            <input type="radio" name="mode" checked={mode === m.id}
-                   onChange={() => setStrategy({ ...strategy, mode: m.id })}
-                   style={{ accentColor: C.flame, marginRight: 10 }} />
-            <span style={{ fontFamily: "var(--plex)", fontWeight: 600, fontSize: 13,
-                           color: mode === m.id ? C.flame : C.bone, letterSpacing: 0.05 }}>
-              {m.label}
-            </span>
-            <div style={{ marginTop: 6, color: C.boneDim, fontSize: 12, fontStyle: "italic",
-                          fontFamily: "var(--plex)", fontWeight: 300, lineHeight: 1.45 }}>
-              {m.sub}
-            </div>
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-}
+// All STRATEGY sections moved to src/components/strategy/StrategySections.jsx
 
-function PnLDistributionSection({ strategy, setStrategy, openCsv }) {
-  const { t } = useT();
-  const mode = strategy.mode || "simple";
-  return (
-    <Collapsible title={t("section_pnl_v2")} testId="section-pnl" defaultOpen>
-      {mode === "simple" ? (
-        <>
-          <button className="fg-btn-ghost" onClick={openCsv}
-                  data-testid="btn-open-csv" style={{ width: "100%", marginBottom: 12 }}>
-            {t("calibrate_cta")}
-          </button>
-          <NumField label={t("field_wr")} value={strategy.wr} step={0.01} tip="wr"
-                    onChange={v => setStrategy({ ...strategy, wr: v })} testId="strat-wr" />
-          <NumField label={t("field_mu_win")} prefix="$" value={strategy.muWin} tip="mu_sigma"
-                    onChange={v => setStrategy({ ...strategy, muWin: v })} testId="strat-muwin" />
-          <NumField label={t("field_sigma_win")} prefix="$" value={strategy.sigmaWin}
-                    onChange={v => setStrategy({ ...strategy, sigmaWin: v })} testId="strat-sigmawin" />
-          <NumField label={t("field_mu_loss")} prefix="$" value={strategy.muLoss}
-                    onChange={v => setStrategy({ ...strategy, muLoss: v })} testId="strat-muloss" />
-          <NumField label={t("field_sigma_loss")} prefix="$" value={strategy.sigmaLoss}
-                    onChange={v => setStrategy({ ...strategy, sigmaLoss: v })} testId="strat-sigmaloss" />
-          <NumField label={t("field_tail_prob")} value={strategy.tailProb} step={0.001} tip="spike"
-                    onChange={v => setStrategy({ ...strategy, tailProb: v })} testId="strat-tailprob" />
-          <NumField label={t("field_tail_mult")} value={strategy.tailMult} step={0.01}
-                    onChange={v => setStrategy({ ...strategy, tailMult: v })} testId="strat-tailmult" />
-        </>
-      ) : (
-        <BootstrapInput strategy={strategy} setStrategy={setStrategy} />
-      )}
-    </Collapsible>
-  );
-}
-
-function BootstrapInput({ strategy, setStrategy }) {
-  const { t } = useT();
-  const [raw, setRaw] = useState("");
-  const [errors, setErrors] = useState([]);
-  const stats = strategy.bootstrapStats;
-  const parse = (text) => {
-    const { data, stats: s, errors: errs } = parseBootstrapData(text);
-    setErrors(errs || []);
-    setStrategy({ ...strategy, bootstrapData: data, bootstrapStats: s });
-  };
-  const pasteClip = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      setRaw(text); parse(text);
-    } catch { setErrors(["Clipboard access denied"]); }
-  };
-  return (
-    <div data-testid="bootstrap-input">
-      <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
-                    fontSize: 13, lineHeight: 1.5, marginBottom: 10 }}>
-        {t("bootstrap_help")}
-      </div>
-      <textarea
-        className="fg-input"
-        style={{ minHeight: 140, fontFamily: "var(--mono)", fontSize: 12, lineHeight: 1.5 }}
-        placeholder={t("bootstrap_placeholder")}
-        value={raw}
-        onChange={(e) => setRaw(e.target.value)}
-        data-testid="bootstrap-textarea"
-      />
-      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-        <button className="fg-btn-ghost" onClick={() => parse(raw)} data-testid="bootstrap-parse"
-                style={{ flex: 1 }}>
-          {t("bootstrap_parse")}
-        </button>
-        <button className="fg-btn-ghost" onClick={pasteClip} data-testid="bootstrap-paste">
-          {t("bootstrap_paste_clip")}
-        </button>
-      </div>
-
-      {errors.length > 0 && (
-        <div style={{ marginTop: 10, color: C.flame, fontSize: 12, fontStyle: "italic",
-                      fontFamily: "var(--plex)" }}>
-          {errors.map((e, i) => <div key={i}>⚠ {e}</div>)}
-        </div>
-      )}
-
-      {stats && (
-        <div style={{ marginTop: 14, padding: 14, background: C.elev, border: `1px solid ${C.border}` }}
-             data-testid="bootstrap-summary">
-          <div style={{ fontFamily: "var(--plex)", fontSize: 11, letterSpacing: 0.2,
-                        textTransform: "uppercase", color: C.steel, marginBottom: 10 }}>
-            § {t("bootstrap_summary_title")}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontFamily: "var(--mono)", fontSize: 12.5 }}>
-            <div><span style={{ color: C.ash }}>total days:</span> <span style={{ color: C.bone }}>{stats.total}</span></div>
-            <div><span style={{ color: C.ash }}>WR:</span> <span style={{ color: C.bone }}>{(stats.wr * 100).toFixed(1)}%</span></div>
-            <div><span style={{ color: C.ash }}>wins:</span> <span style={{ color: C.bone }}>{stats.wins}</span></div>
-            <div><span style={{ color: C.ash }}>losses:</span> <span style={{ color: C.bone }}>{stats.losses}</span></div>
-            <div><span style={{ color: C.ash }}>μ win:</span> <span style={{ color: C.bone }}>{stats.meanWin.toFixed(0)}</span></div>
-            <div><span style={{ color: C.ash }}>μ loss:</span> <span style={{ color: C.bone }}>{stats.meanLoss.toFixed(0)}</span></div>
-            <div><span style={{ color: C.ash }}>best:</span> <span style={{ color: C.bone }}>+{stats.best.toFixed(0)}</span></div>
-            <div><span style={{ color: C.ash }}>worst:</span> <span style={{ color: C.bone }}>{stats.worst.toFixed(0)}</span></div>
-            <div><span style={{ color: C.ash }}>MAE column:</span>
-              <span style={{ color: stats.hasMae ? C.bone : C.flame }}> {stats.hasMae ? "yes" : "no"}</span>
-            </div>
-            <div><span style={{ color: C.ash }}>autocorr:</span>
-              <span style={{ color: Math.abs(stats.autocorrelation) > 0.2 ? C.flame : C.bone }}>
-                {" "}{stats.autocorrelation.toFixed(2)}
-              </span>
-            </div>
-          </div>
-          {stats.total >= 100
-            ? <div style={{ marginTop: 8, color: C.brass, fontSize: 11.5, fontFamily: "var(--plex)" }}>
-                ✓ {stats.total} samples (recommended ≥100)
-              </div>
-            : <div style={{ marginTop: 8, color: C.flame, fontSize: 11.5, fontFamily: "var(--plex)" }}>
-                ⚠ {t("bootstrap_min_warning")}
-              </div>}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function IntradayRiskSection({ strategy, setStrategy }) {
-  const { t } = useT();
-  const maeMode = strategy.maeMode || "estimate";
-  const hasBootMae = strategy.mode === "bootstrap" && strategy.bootstrapStats?.hasMae;
-  return (
-    <Collapsible title={t("section_mae_v2")} testId="section-mae">
-      <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
-                    fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
-        {t("mae_help")}
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-        {[
-          { id: "estimate", label: t("mae_estimate") },
-          { id: "manual",   label: t("mae_manual") },
-          { id: "auto",     label: t("mae_auto"), disabled: !hasBootMae },
-        ].map(m => (
-          <label key={m.id} style={{ cursor: m.disabled ? "not-allowed" : "pointer",
-                                      opacity: m.disabled ? 0.4 : 1, display: "flex", alignItems: "center", gap: 8 }}
-                 data-testid={`mae-mode-${m.id}`}>
-            <input type="radio" name="mae-mode" checked={maeMode === m.id}
-                   disabled={m.disabled}
-                   onChange={() => setStrategy({ ...strategy, maeMode: m.id })}
-                   style={{ accentColor: C.flame }} />
-            <span style={{ fontFamily: "var(--plex)", fontSize: 12.5,
-                           color: maeMode === m.id ? C.flame : C.bone }}>
-              {m.label}
-            </span>
-          </label>
-        ))}
-      </div>
-      {maeMode === "estimate" && (
-        <div>
-          <label className="fg-label" style={{ marginBottom: 6, display: "block" }}>{t("field_instrument")}</label>
-          <select className="fg-select" value={strategy.instrument || "nq"}
-                  onChange={(e) => setStrategy({ ...strategy, instrument: e.target.value })}
-                  data-testid="strat-instrument">
-            {Object.entries(INSTRUMENT_MAE_RATIOS).map(([k, v]) =>
-              <option key={k} value={k}>{v.label}</option>)}
-          </select>
-          <div style={{ marginTop: 10, padding: 10, background: C.elev, border: `1px solid ${C.border}`,
-                        fontFamily: "var(--mono)", fontSize: 11.5, color: C.boneDim }}>
-            {(() => {
-              const r = INSTRUMENT_MAE_RATIOS[strategy.instrument || "nq"] || INSTRUMENT_MAE_RATIOS.nq;
-              return (<>
-                <div>win-day MAE ≈ σwin × {r.winScale.toFixed(2)} = {(strategy.sigmaWin * r.winScale).toFixed(0)}</div>
-                <div>loss-day MAE ≈ |loss| × {r.lossRatio.toFixed(1)} = {(Math.abs(strategy.muLoss) * r.lossRatio).toFixed(0)}</div>
-              </>);
-            })()}
-          </div>
-        </div>
-      )}
-      {maeMode === "manual" && (
-        <div>
-          <NumField label={t("field_mae_win_mean")}  prefix="$" value={strategy.maeWinMean ?? 0}
-                    onChange={v => setStrategy({ ...strategy, maeWinMean: v })}   testId="strat-maewinmean" />
-          <NumField label={t("field_mae_win_std")}   prefix="$" value={strategy.maeWinStd ?? 0}
-                    onChange={v => setStrategy({ ...strategy, maeWinStd: v })}    testId="strat-maewinstd" />
-          <NumField label={t("field_mae_loss_mean")} prefix="$" value={strategy.maeLossMean ?? 0}
-                    onChange={v => setStrategy({ ...strategy, maeLossMean: v })}  testId="strat-maelossmean" />
-          <NumField label={t("field_mae_loss_std")}  prefix="$" value={strategy.maeLossStd ?? 0}
-                    onChange={v => setStrategy({ ...strategy, maeLossStd: v })}   testId="strat-maelossstd" />
-        </div>
-      )}
-      {maeMode === "auto" && (
-        <div style={{ color: C.brass, fontFamily: "var(--plex)", fontSize: 12.5, fontStyle: "italic" }}>
-          ✓ {t("mae_auto_ok")}
-        </div>
-      )}
-    </Collapsible>
-  );
-}
-
-function CostsSection({ strategy, setStrategy }) {
-  const { t } = useT();
-  const cm = strategy.commissionMode || "none";
-  const daily = cm === "estimate"
-    ? (strategy.commissionPerRT || 0) * (strategy.tradesPerDay || 0) * (strategy.contractsPerTrade || 1)
-    : cm === "fixed" ? (strategy.dailyCommission || 0) : 0;
-  return (
-    <Collapsible title={t("section_costs")} testId="section-costs"
-                 badge={daily > 0 ? `−$${daily.toFixed(0)}/day` : null}
-                 badgeColor={daily > 0 ? C.flame : C.brass}>
-      <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
-                    fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
-        {t("costs_help")}
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-        {[
-          { id: "none",     label: t("costs_none") },
-          { id: "estimate", label: t("costs_estimate") },
-          { id: "fixed",    label: t("costs_fixed") },
-        ].map(m => (
-          <label key={m.id} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
-                 data-testid={`costs-mode-${m.id}`}>
-            <input type="radio" name="costs-mode" checked={cm === m.id}
-                   onChange={() => setStrategy({ ...strategy, commissionMode: m.id })}
-                   style={{ accentColor: C.flame }} />
-            <span style={{ fontFamily: "var(--plex)", fontSize: 12.5,
-                           color: cm === m.id ? C.flame : C.bone }}>{m.label}</span>
-          </label>
-        ))}
-      </div>
-      {cm === "estimate" && (
-        <div>
-          <NumField label={t("field_comm_per_rt")} prefix="$" value={strategy.commissionPerRT}
-                    onChange={v => setStrategy({ ...strategy, commissionPerRT: v })}
-                    testId="strat-commrt" step={0.1} />
-          <NumField label={t("field_trades_day")} value={strategy.tradesPerDay}
-                    onChange={v => setStrategy({ ...strategy, tradesPerDay: v })}
-                    testId="strat-tradesday" step={1} />
-          <NumField label={t("field_contracts_trade")} value={strategy.contractsPerTrade}
-                    onChange={v => setStrategy({ ...strategy, contractsPerTrade: v })}
-                    testId="strat-contracts" step={1} />
-          <div style={{ marginTop: 10, padding: 10, background: C.elev, border: `1px solid ${C.border}`,
-                        fontFamily: "var(--mono)", fontSize: 12, color: C.flame }}>
-            → daily cost: −${daily.toFixed(2)}
-          </div>
-        </div>
-      )}
-      {cm === "fixed" && (
-        <NumField label={t("field_daily_commission")} prefix="$" value={strategy.dailyCommission}
-                  onChange={v => setStrategy({ ...strategy, dailyCommission: v })}
-                  testId="strat-dailycomm" step={1} />
-      )}
-    </Collapsible>
-  );
-}
-
-function BehavioralSection({ strategy, setStrategy }) {
-  const { t } = useT();
-  const postMode = strategy.postTargetMode || "conservative";
-  const minDaysType = strategy.minDaysType || "total";
-  const maxDaysType = strategy.maxDaysType || "trading";
-  const Radio = ({ name, options, value, onChange, testPrefix }) => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
-      {options.map(o => (
-        <label key={o.id} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8 }}
-               data-testid={`${testPrefix}-${o.id}`}>
-          <input type="radio" name={name} checked={value === o.id}
-                 onChange={() => onChange(o.id)}
-                 style={{ accentColor: C.flame, marginTop: 3 }} />
-          <div>
-            <div style={{ fontFamily: "var(--plex)", fontSize: 12.5,
-                          color: value === o.id ? C.flame : C.bone, fontWeight: 500 }}>
-              {o.label}
-            </div>
-            {o.sub && <div style={{ fontFamily: "var(--plex)", fontStyle: "italic",
-                                     color: C.boneDim, fontSize: 11.5, fontWeight: 300, marginTop: 2 }}>
-              {o.sub}
-            </div>}
-          </div>
-        </label>
-      ))}
-    </div>
-  );
-  return (
-    <Collapsible title={t("section_behavioral")} testId="section-behavioral">
-      <div className="fg-label" style={{ marginBottom: 8 }}>{t("behav_post_title")}</div>
-      <Radio name="post-mode" testPrefix="behav-post"
-             value={postMode} onChange={v => setStrategy({ ...strategy, postTargetMode: v })}
-             options={[
-               { id: "conservative", label: t("behav_conservative"),  sub: t("behav_conservative_sub") },
-               { id: "aggressive",   label: t("behav_aggressive"),    sub: t("behav_aggressive_sub") },
-             ]} />
-      <div style={{ borderTop: `1px dotted ${C.borderHot}`, margin: "10px 0" }} />
-      <div className="fg-label" style={{ marginBottom: 8 }}>{t("behav_mindays_title")}</div>
-      <Radio name="mindays-type" testPrefix="behav-mindays"
-             value={minDaysType} onChange={v => setStrategy({ ...strategy, minDaysType: v })}
-             options={[
-               { id: "total",   label: t("behav_mindays_total") },
-               { id: "winning", label: t("behav_mindays_winning") },
-             ]} />
-      {minDaysType === "winning" && (
-        <NumField label={t("field_win_day_threshold")} prefix="$" value={strategy.winDayThreshold}
-                  onChange={v => setStrategy({ ...strategy, winDayThreshold: v })}
-                  testId="strat-windaythresh" />
-      )}
-      <div style={{ borderTop: `1px dotted ${C.borderHot}`, margin: "10px 0" }} />
-      <div className="fg-label" style={{ marginBottom: 8 }}>{t("behav_maxdays_title")}</div>
-      <Radio name="maxdays-type" testPrefix="behav-maxdays"
-             value={maxDaysType} onChange={v => setStrategy({ ...strategy, maxDaysType: v })}
-             options={[
-               { id: "trading",  label: t("behav_maxdays_trading") },
-               { id: "calendar", label: t("behav_maxdays_calendar") },
-             ]} />
-    </Collapsible>
-  );
-}
-
-// ─────────────────────────── Post-PASS (funded cycle) section ───────────────────────────
-function PostPassSection({ strategy, setStrategy, firmId, plan }) {
-  const { t } = useT();
-  const enabled = !!strategy.postPassEnabled;
-  const horizon = strategy.postPassHorizonMonths ?? 6;
-  const sizeMode = strategy.postPassSizeMode || "same";
-  const sizeFactor = strategy.postPassSizeFactor ?? 0.5;
-  const ov = useMemo(() => strategy.fundedOverride || {}, [strategy.fundedOverride]);
-
-  // Effective resolved rules (firm defaults + override) for display
-  const effective = useMemo(() => {
-    if (!plan) return null;
-    try { return resolveFundedRules(plan, firmId, ov); } catch { return null; }
-  }, [plan, firmId, ov]);
-
-  const setOv = (patch) =>
-    setStrategy({ ...strategy, fundedOverride: { ...(strategy.fundedOverride || {}), ...patch } });
-
-  const resetDefaults = () =>
-    setStrategy({ ...strategy, fundedOverride: {} });
-
-  const Radio = ({ name, options, value, onChange, testPrefix }) => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
-      {options.map(o => (
-        <label key={o.id} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8 }}
-               data-testid={`${testPrefix}-${o.id}`}>
-          <input type="radio" name={name} checked={value === o.id}
-                 onChange={() => onChange(o.id)}
-                 style={{ accentColor: C.flame, marginTop: 3 }} />
-          <div>
-            <div style={{ fontFamily: "var(--plex)", fontSize: 12.5,
-                          color: value === o.id ? C.flame : C.bone, fontWeight: 500 }}>
-              {o.label}
-            </div>
-            {o.sub && <div style={{ fontFamily: "var(--plex)", fontStyle: "italic",
-                                     color: C.boneDim, fontSize: 11.5, fontWeight: 300, marginTop: 2 }}>
-              {o.sub}
-            </div>}
-          </div>
-        </label>
-      ))}
-    </div>
-  );
-
-  return (
-    <Collapsible title={t("section_postpass")} testId="section-postpass"
-                 badge={enabled ? "ON" : "OFF"} badgeColor={enabled ? C.ember : C.borderHot}>
-      {/* Toggle */}
-      <ToggleRow label={t("postpass_toggle")} on={enabled}
-                 onToggle={(v) => setStrategy({ ...strategy, postPassEnabled: v })}
-                 testId="pp-toggle">
-        <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
-                      fontSize: 11.5, marginTop: 4 }}>
-          › {t("postpass_toggle_hint")}
-        </div>
-      </ToggleRow>
-
-      {enabled && (
-        <>
-          <div style={{ borderTop: `1px dotted ${C.borderHot}`, margin: "12px 0" }} />
-
-          {/* Horizon slider */}
-          <div style={{ marginBottom: 12 }}>
-            <div className="fg-label" style={{ marginBottom: 6 }}>
-              {t("postpass_horizon")} · <span style={{ color: C.ember }}>{horizon}m</span>
-            </div>
-            <input type="range" min={1} max={24} step={1} value={horizon}
-                   onChange={(e) => setStrategy({ ...strategy, postPassHorizonMonths: parseInt(e.target.value, 10) })}
-                   data-testid="pp-horizon"
-                   style={{ width: "100%", accentColor: C.ember }} />
-            <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
-                          fontSize: 11, marginTop: 3 }}>
-              › {t("postpass_horizon_hint")} ({horizon * 21} trading days)
-            </div>
-          </div>
-
-          <div style={{ borderTop: `1px dotted ${C.borderHot}`, margin: "12px 0" }} />
-
-          {/* Size mode */}
-          <div className="fg-label" style={{ marginBottom: 8 }}>{t("postpass_size_title")}</div>
-          <Radio name="pp-size" testPrefix="pp-size"
-                 value={sizeMode}
-                 onChange={v => setStrategy({ ...strategy, postPassSizeMode: v })}
-                 options={[
-                   { id: "same",    label: t("postpass_size_same"),    sub: t("postpass_size_same_sub") },
-                   { id: "reduced", label: t("postpass_size_reduced"), sub: t("postpass_size_reduced_sub") },
-                 ]} />
-          {sizeMode === "reduced" && (
-            <div style={{ marginBottom: 12 }}>
-              <div className="fg-label" style={{ marginBottom: 6 }}>
-                {t("postpass_size_factor")} · <span style={{ color: C.ember }}>{Math.round(sizeFactor * 100)}%</span>
-              </div>
-              <input type="range" min={0.05} max={1.0} step={0.05} value={sizeFactor}
-                     onChange={(e) => setStrategy({ ...strategy, postPassSizeFactor: parseFloat(e.target.value) })}
-                     data-testid="pp-size-factor"
-                     style={{ width: "100%", accentColor: C.ember }} />
-            </div>
-          )}
-
-          <div style={{ borderTop: `1px dotted ${C.borderHot}`, margin: "12px 0" }} />
-
-          {/* Rules overrides */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
-                        marginBottom: 8 }}>
-            <div className="fg-label">{t("postpass_rules_title")}</div>
-            <button className="fg-btn-ghost" onClick={resetDefaults} data-testid="pp-reset"
-                    style={{ fontSize: 10.5, padding: "3px 8px" }}>
-              ⟳ {t("postpass_reset")}
-            </button>
-          </div>
-          <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
-                        fontSize: 11.5, marginBottom: 10 }}>
-            › {t("postpass_rules_hint")}
-          </div>
-
-          {effective && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 14px" }}>
-              <NumField label={t("pp_firstPayoutMinDays")} value={ov.firstPayoutMinDays ?? effective.firstPayoutMinDays}
-                        onChange={v => setOv({ firstPayoutMinDays: v })} testId="pp-firstdays" width={90} />
-              <NumField label={t("pp_payoutFrequency")}    value={ov.payoutFrequency    ?? effective.payoutFrequency}
-                        onChange={v => setOv({ payoutFrequency: v })}    testId="pp-freq" width={90} />
-              <NumField label={t("pp_payoutBuffer")}  prefix="$" value={ov.payoutBuffer ?? effective.payoutBuffer}
-                        onChange={v => setOv({ payoutBuffer: v })} testId="pp-buffer" width={90} />
-              <NumField label={t("pp_payoutMinAmount")} prefix="$" value={ov.payoutMinAmount ?? effective.payoutMinAmount}
-                        onChange={v => setOv({ payoutMinAmount: v })} testId="pp-min" width={90} />
-              <NumField label={t("pp_payoutMaxPct")}  step={0.05} value={ov.payoutMaxPct ?? effective.payoutMaxPct}
-                        onChange={v => setOv({ payoutMaxPct: v })} testId="pp-maxpct" width={90} />
-              <NumField label={t("pp_payoutMaxCap")}  prefix="$" value={ov.payoutMaxCap ?? effective.payoutMaxCap ?? null}
-                        onChange={v => setOv({ payoutMaxCap: v })} testId="pp-cap" width={90} />
-              <NumField label={t("pp_safetyNet")}     prefix="$" value={ov.safetyNet ?? effective.safetyNet}
-                        onChange={v => setOv({ safetyNet: v })} testId="pp-safety" width={90} />
-              <NumField label={t("pp_payoutConsistency")} step={0.05}
-                        value={ov.payoutConsistency ?? effective.payoutConsistency ?? null}
-                        onChange={v => setOv({ payoutConsistency: v })} testId="pp-cons" width={90} />
-              <SelectField label={t("pp_payoutConsistencyType")}
-                           value={ov.payoutConsistencyType ?? effective.payoutConsistencyType ?? ""}
-                           onChange={v => setOv({ payoutConsistencyType: v })} testId="pp-cons-type"
-                           options={[{ value: "", label: "—" }, { value: "vs_total", label: "vs_total" }]} />
-              <SelectField label={t("pp_ddTypeOverride")}
-                           value={ov.ddTypeOverride ?? effective.ddType}
-                           onChange={v => setOv({ ddTypeOverride: v })} testId="pp-ddtype"
-                           options={[
-                             { value: "static",             label: "static" },
-                             { value: "trailing_eod",       label: "trailing_eod" },
-                             { value: "trailing_intraday",  label: "trailing_intraday" },
-                           ]} />
-              <NumField label={t("pp_ddValueOverride")} prefix="$" value={ov.ddValueOverride ?? effective.ddValue}
-                        onChange={v => setOv({ ddValueOverride: v })} testId="pp-ddvalue" width={90} />
-              <SelectField label={t("pp_floorLockOverride")}
-                           value={ov.floorLockOverride ?? effective.floorLock ?? "none"}
-                           onChange={v => setOv({ floorLockOverride: v })} testId="pp-floorlock"
-                           options={[
-                             { value: "none",                 label: "none" },
-                             { value: "at_capital",           label: "at_capital" },
-                             { value: "at_target_level",      label: "at_target_level" },
-                             { value: "at_capital_plus_100",  label: "at_capital_plus_100" },
-                           ]} />
-              <NumField label={t("pp_dailyLossOverride")} prefix="$" value={ov.dailyLossOverride ?? effective.dailyLoss ?? null}
-                        onChange={v => setOv({ dailyLossOverride: v })} testId="pp-dll" width={90} />
-              <ToggleRow label={t("pp_resetOnPayout")}
-                         on={ov.resetOnPayout ?? effective.resetOnPayout}
-                         onToggle={v => setOv({ resetOnPayout: v })}
-                         testId="pp-reset-balance" />
-              <ToggleRow label={t("pp_resetFloorOnPayout")}
-                         on={ov.resetFloorOnPayout ?? effective.resetFloorOnPayout}
-                         onToggle={v => setOv({ resetFloorOnPayout: v })}
-                         testId="pp-reset-floor" />
-            </div>
-          )}
-        </>
-      )}
-    </Collapsible>
-  );
-}
 
 // ─────────────────────────── Compact header ───────────────────────────
 function Header() {
@@ -1272,121 +575,27 @@ function Header() {
   );
 }
 
-// ─────────────────────────── Glossary (tab 04) ───────────────────────────
-function Glossary() {
-  const { t } = useT();
-  const [query, setQuery] = useState("");
-  const sections = useMemo(() => [
-    { id: "methods",    letter: "A", title: t("gloss_a_title") },
-    { id: "dd-types",   letter: "B", title: t("gloss_b_title") },
-    { id: "floor-lock", letter: "C", title: t("gloss_c_title") },
-    { id: "cons",       letter: "D", title: t("gloss_d_title") },
-    { id: "mae",        letter: "E", title: t("gloss_e_title") },
-    { id: "metrics",    letter: "F", title: t("gloss_f_title") },
-    { id: "lifecycle",  letter: "G", title: t("gloss_g_title") },
-    { id: "ops",        letter: "H", title: t("gloss_h_title") },
-  ], [t]);
-
-  const terms = useMemo(() => ([
-    { section: "methods", name: t("gloss_simple_name"),       body: t("gloss_simple_body") },
-    { section: "methods", name: t("gloss_bootstrap_name"),    body: t("gloss_bootstrap_body") },
-    { section: "dd-types", name: t("gloss_static_name"),      body: t("gloss_static_body") },
-    { section: "dd-types", name: t("gloss_teod_name"),        body: t("gloss_teod_body") },
-    { section: "dd-types", name: t("gloss_tintraday_name"),   body: t("gloss_tintraday_body") },
-    { section: "floor-lock", name: t("gloss_fl_none_name"),   body: t("gloss_fl_none_body") },
-    { section: "floor-lock", name: t("gloss_fl_cap_name"),    body: t("gloss_fl_cap_body") },
-    { section: "floor-lock", name: t("gloss_fl_target_name"), body: t("gloss_fl_target_body") },
-    { section: "floor-lock", name: t("gloss_fl_cap100_name"), body: t("gloss_fl_cap100_body") },
-    { section: "cons", name: t("gloss_cons_target_name"),     body: t("gloss_cons_target_body") },
-    { section: "cons", name: t("gloss_cons_total_name"),      body: t("gloss_cons_total_body") },
-    { section: "mae", name: t("gloss_mae_name"),              body: t("gloss_mae_body") },
-    { section: "metrics", name: t("gloss_ppass_name"),        body: t("gloss_ppass_body") },
-    { section: "metrics", name: t("gloss_ev_name"),           body: t("gloss_ev_body") },
-    { section: "metrics", name: t("gloss_breakeven_name"),    body: t("gloss_breakeven_body") },
-    { section: "metrics", name: t("gloss_bankroll_name"),     body: t("gloss_bankroll_body") },
-    { section: "metrics", name: t("gloss_days_name"),         body: t("gloss_days_body") },
-    { section: "metrics", name: t("gloss_attempts_name"),     body: t("gloss_attempts_body") },
-    { section: "metrics", name: t("gloss_attempt_curve_name"), body: t("gloss_attempt_curve_body") },
-    { section: "lifecycle", name: t("gloss_funded_name"),     body: t("gloss_funded_body") },
-    { section: "lifecycle", name: t("gloss_payout_name"),     body: t("gloss_payout_body") },
-    { section: "lifecycle", name: t("gloss_takehome_name"),   body: t("gloss_takehome_body") },
-    { section: "lifecycle", name: t("gloss_postpass_name"),   body: t("gloss_postpass_body") },
-    { section: "lifecycle", name: t("gloss_safetynet_name"),  body: t("gloss_safetynet_body") },
-    { section: "lifecycle", name: t("gloss_consistency_postpass_name"), body: t("gloss_consistency_postpass_body") },
-    { section: "ops", name: t("gloss_commissions_name"),      body: t("gloss_commissions_body") },
-    { section: "ops", name: t("gloss_behavioral_name"),       body: t("gloss_behavioral_body") },
-    { section: "ops", name: t("gloss_autocorr_name"),         body: t("gloss_autocorr_body") },
-  ]), [t]);
-
-  const q = query.trim().toLowerCase();
-  const filter = (term) => !q ||
-    term.name.toLowerCase().includes(q) ||
-    term.body.toLowerCase().includes(q);
-
-  return (
-    <div className="gloss-wrap" data-testid="glossary">
-      <nav className="gloss-nav" aria-label="glossary index">
-        <input className="fg-input gloss-search"
-               placeholder={t("gloss_search_placeholder")}
-               value={query} onChange={(e) => setQuery(e.target.value)}
-               data-testid="gloss-search" />
-        <ul>
-          {sections.map(s => (
-            <li key={s.id}>
-              <a href={`#gloss-${s.id}`}
-                 onClick={(e) => {
-                   e.preventDefault();
-                   const el = document.getElementById(`gloss-${s.id}`);
-                   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                 }}
-                 data-testid={`gloss-nav-${s.id}`}>
-                <span className="letter">{s.letter}</span>{s.title}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      <div>
-        {sections.map(s => {
-          const secTerms = terms.filter(t => t.section === s.id).filter(filter);
-          if (secTerms.length === 0 && q) return null;
-          return (
-            <section key={s.id} id={`gloss-${s.id}`} className="gloss-section">
-              <h3><span className="letter-tag">{s.letter}</span>{s.title}</h3>
-              <div className="rule" />
-              {secTerms.map((term, i) => (
-                <div key={i} className="gloss-term">
-                  <div className="gloss-term-name">{term.name}</div>
-                  <div className="gloss-term-body" style={{ whiteSpace: "pre-line" }}>{term.body}</div>
-                </div>
-              ))}
-            </section>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+// Glossary moved to src/components/Glossary.jsx
 
 function HeroSection() { return null; }
 
 function LangToggle({ lang, setLang }) {
-  const active = { color: C.ember, fontWeight: 700 };
-  const dim    = { color: C.ash, cursor: "pointer" };
+  const active = { color: C.brass, fontWeight: 700 };
+  const dim    = { color: C.smoke, cursor: "pointer" };
   return (
     <div style={{ fontSize: 12, letterSpacing: 0.2, fontFamily: "var(--mono)" }}
          data-testid="lang-toggle">
-      <span style={{ color: C.ash }}>[ </span>
+      <span style={{ color: C.smoke }}>[ </span>
       <span style={lang === "es" ? active : dim} onClick={() => setLang("es")}
             data-testid="lang-es" role="button" tabIndex={0}>
         {lang === "es" ? "ES" : "es"}
       </span>
-      <span style={{ color: C.borderHot, margin: "0 6px" }}>·</span>
+      <span style={{ color: C.haze, margin: "0 6px" }}>·</span>
       <span style={lang === "en" ? active : dim} onClick={() => setLang("en")}
             data-testid="lang-en" role="button" tabIndex={0}>
         {lang === "en" ? "EN" : "en"}
       </span>
-      <span style={{ color: C.ash }}> ]</span>
+      <span style={{ color: C.smoke }}> ]</span>
     </div>
   );
 }
@@ -1395,24 +604,24 @@ function WelcomeBlock({ onClose }) {
   const { t } = useT();
   return (
     <section style={{ maxWidth: 1600, margin: "16px auto 0", padding: "0 24px" }} data-testid="welcome-block">
-      <div className="fg-panel fg-fadein" style={{ padding: 18, borderStyle: "dashed", borderColor: C.ember,
-                                                     background: `${C.ember}06` }}>
+      <div className="fg-panel fg-fadein" style={{ padding: 18, borderStyle: "dashed", borderColor: C.brass,
+                                                     background: `${C.brass}06` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-          <div style={{ color: C.ember, fontSize: 12, fontWeight: 700, letterSpacing: 0.3, textTransform: "uppercase" }}>
+          <div style={{ color: C.brass, fontSize: 12, fontWeight: 700, letterSpacing: 0.3, textTransform: "uppercase" }}>
             › {t("welcome_title")}
           </div>
           <button className="fg-btn-ghost" onClick={onClose} data-testid="btn-welcome-close">
             ✕ {t("welcome_hide")}
           </button>
         </div>
-        <div style={{ color: C.boneDim, fontSize: 13, lineHeight: 1.65, marginBottom: 14 }}>
+        <div style={{ color: C.linen, fontSize: 13, lineHeight: 1.65, marginBottom: 14 }}>
           {t("welcome_lead")}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
           <div>
-            <div style={{ color: C.ash, fontSize: 10.5, letterSpacing: 0.25, textTransform: "uppercase",
+            <div style={{ color: C.smoke, fontSize: 10.5, letterSpacing: 0.25, textTransform: "uppercase",
                           marginBottom: 6, fontWeight: 700 }}>{t("welcome_flow_title")}</div>
-            <ol style={{ margin: 0, paddingLeft: 18, color: C.boneDim, fontSize: 12.5, lineHeight: 1.8 }}>
+            <ol style={{ margin: 0, paddingLeft: 18, color: C.linen, fontSize: 12.5, lineHeight: 1.8 }}>
               <li>{t("welcome_flow_1")}</li>
               <li>{t("welcome_flow_2")}</li>
               <li>{t("welcome_flow_3")}</li>
@@ -1420,9 +629,9 @@ function WelcomeBlock({ onClose }) {
             </ol>
           </div>
           <div>
-            <div style={{ color: C.ash, fontSize: 10.5, letterSpacing: 0.25, textTransform: "uppercase",
+            <div style={{ color: C.smoke, fontSize: 10.5, letterSpacing: 0.25, textTransform: "uppercase",
                           marginBottom: 6, fontWeight: 700 }}>{t("welcome_needs_title")}</div>
-            <ul style={{ margin: 0, paddingLeft: 18, color: C.boneDim, fontSize: 12.5, lineHeight: 1.8,
+            <ul style={{ margin: 0, paddingLeft: 18, color: C.linen, fontSize: 12.5, lineHeight: 1.8,
                          listStyle: "'› '" }}>
               <li>{t("welcome_needs_1")}</li>
               <li>{t("welcome_needs_2")}</li>
@@ -1431,8 +640,8 @@ function WelcomeBlock({ onClose }) {
             </ul>
           </div>
         </div>
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px dashed ${C.borderHot}`,
-                      color: C.ash, fontSize: 11.5, lineHeight: 1.6 }}>
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px dashed ${C.haze}`,
+                      color: C.smoke, fontSize: 11.5, lineHeight: 1.6 }}>
           // {t("welcome_footer")}
         </div>
       </div>
@@ -1445,10 +654,10 @@ function Footer() {
   return (
     <footer style={{ padding: "28px 24px 32px", marginTop: 40 }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <div style={{ color: C.borderHot, letterSpacing: 0.3, fontSize: 10, whiteSpace: "nowrap", overflow: "hidden" }}>
+        <div style={{ color: C.haze, letterSpacing: 0.3, fontSize: 10, whiteSpace: "nowrap", overflow: "hidden" }}>
           ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
         </div>
-        <div style={{ color: C.ash, fontSize: 11, lineHeight: 1.8, marginTop: 10 }}>
+        <div style={{ color: C.smoke, fontSize: 11, lineHeight: 1.8, marginTop: 10 }}>
           {t("footer_l1")}<br />
           {t("footer_l2")}<br />
           {t("footer_l3")}
@@ -1493,7 +702,7 @@ function CustomFirstCard({ firm, selected, onClick }) {
         </svg>
         <div>
           <div style={{ fontFamily: "var(--plex)", fontSize: 10.5, letterSpacing: 0.24,
-                        fontWeight: 500, color: C.flame, marginBottom: 6, textTransform: "uppercase" }}>
+                        fontWeight: 500, color: C.cinnabar, marginBottom: 6, textTransform: "uppercase" }}>
             · vocatio propria
           </div>
           <div style={{ fontFamily: "var(--fraunces)", fontVariationSettings: "'opsz' 144, 'WONK' 1",
@@ -1503,7 +712,7 @@ function CustomFirstCard({ firm, selected, onClick }) {
           </div>
         </div>
       </div>
-      <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
+      <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.linen,
                     fontSize: 13.5, lineHeight: 1.6, maxWidth: 520, fontWeight: 300 }}>
         {t("custom_card_desc")}
       </div>
@@ -1540,8 +749,8 @@ function FirmCard({ firm, selected, onClick }) {
     trailing_eod: "trailing·eod", trailing_intraday: "trailing·intraday", static: "static"
   }[type] || type);
   const ddCol = (type) => ({
-    trailing_eod: C.brass, trailing_intraday: C.flame, static: C.steel
-  }[type] || C.ash);
+    trailing_eod: C.brass, trailing_intraday: C.cinnabar, static: C.steel
+  }[type] || C.smoke);
   const stars = estimateDifficulty(firm);
   return (
     <div className={`fg-card ${selected ? "selected" : ""}`}
@@ -1554,7 +763,7 @@ function FirmCard({ firm, selected, onClick }) {
                         whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {firm.name}
           </div>
-          <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.ash,
+          <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.smoke,
                         fontWeight: 300, fontSize: 12.5, marginTop: 4 }}>
             {firm.subtitle}
           </div>
@@ -1571,8 +780,8 @@ function FirmCard({ firm, selected, onClick }) {
           {ddTypes.map(ty => (
             <span key={ty} style={{ color: ddCol(ty) }}>{ddTag(ty)}</span>
           ))}
-          {firm.allowsOvernight && <span style={{ color: C.boneDim }}>{t("overnight_badge")}</span>}
-          {hasTwoPhase && <span style={{ color: C.flame }}>{t("two_phase_badge")}</span>}
+          {firm.allowsOvernight && <span style={{ color: C.linen }}>{t("overnight_badge")}</span>}
+          {hasTwoPhase && <span style={{ color: C.cinnabar }}>{t("two_phase_badge")}</span>}
         </div>
       </div>
     </div>
@@ -1586,14 +795,14 @@ function PlanCard({ plan, firm, selected, onClick }) {
   const ddPct = ((plan.ddValue / plan.capital) * 100).toFixed(1);
   const tgtPct = ((plan.target / plan.capital) * 100).toFixed(1);
   const ddTag = { trailing_eod: "TRAILING·EOD", trailing_intraday: "TRAILING·INTRADAY", static: "STATIC" }[plan.ddType];
-  const ddCol = { trailing_eod: C.ember, trailing_intraday: C.flame, static: C.ash }[plan.ddType];
+  const ddCol = { trailing_eod: C.brass, trailing_intraday: C.cinnabar, static: C.smoke }[plan.ddType];
   return (
     <div className={`fg-panel fg-card ${selected ? "selected" : ""}`}
          onClick={onClick} data-testid={`plan-${plan.planId}`}
          style={{ padding: 14, position: "relative" }}>
       {isPopular && (
         <span style={{ position: "absolute", top: -1, right: -1, fontSize: 9,
-                       padding: "2px 8px", background: C.ember, color: C.bg,
+                       padding: "2px 8px", background: C.brass, color: C.ink,
                        fontWeight: 700, letterSpacing: 0.2 }}>{t("popular_badge")}</span>
       )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
@@ -1603,8 +812,8 @@ function PlanCard({ plan, firm, selected, onClick }) {
         <div style={{ textAlign: "right", fontSize: 11 }}>
           {plan.feeType === "monthly" ? (
             <>
-              <div style={{ color: C.flame, fontSize: 9, letterSpacing: 0.2 }}>{t("monthly_badge")}</div>
-              <div style={{ color: C.bone, marginTop: 2 }}>${plan.fee}<span style={{ color: C.ash }}>/mo</span></div>
+              <div style={{ color: C.cinnabar, fontSize: 9, letterSpacing: 0.2 }}>{t("monthly_badge")}</div>
+              <div style={{ color: C.bone, marginTop: 2 }}>${plan.fee}<span style={{ color: C.smoke }}>/mo</span></div>
             </>
           ) : (
             <div style={{ color: C.bone }}>${plan.fee}</div>
@@ -1613,23 +822,23 @@ function PlanCard({ plan, firm, selected, onClick }) {
       </div>
       {!isCustom && (
         <>
-          <div style={{ fontSize: 10.5, color: C.ash, marginTop: 4, letterSpacing: 0.1 }}>› {plan.label}</div>
+          <div style={{ fontSize: 10.5, color: C.smoke, marginTop: 4, letterSpacing: 0.1 }}>› {plan.label}</div>
           <div className="fg-row-divider" style={{ margin: "10px 0" }} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 11 }}>
             <div>
-              <div style={{ color: C.ash, fontSize: 9, letterSpacing: 0.2 }}>{t("summary_target")}</div>
-              <div style={{ color: C.ember, marginTop: 2 }}>{fmtMoney(plan.target)}
-                <span style={{ color: C.ash }}> · {tgtPct}%</span></div>
+              <div style={{ color: C.smoke, fontSize: 9, letterSpacing: 0.2 }}>{t("summary_target")}</div>
+              <div style={{ color: C.brass, marginTop: 2 }}>{fmtMoney(plan.target)}
+                <span style={{ color: C.smoke }}> · {tgtPct}%</span></div>
             </div>
             <div>
-              <div style={{ color: C.ash, fontSize: 9, letterSpacing: 0.2 }}>{t("summary_dd")}</div>
-              <div style={{ color: C.blood, marginTop: 2 }}>{fmtMoney(plan.ddValue)}
-                <span style={{ color: C.ash }}> · {ddPct}%</span></div>
+              <div style={{ color: C.smoke, fontSize: 9, letterSpacing: 0.2 }}>{t("summary_dd")}</div>
+              <div style={{ color: C.cinnabar, marginTop: 2 }}>{fmtMoney(plan.ddValue)}
+                <span style={{ color: C.smoke }}> · {ddPct}%</span></div>
             </div>
           </div>
           <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", fontSize: 10, letterSpacing: 0.15 }}>
             <span style={{ color: ddCol }}>◆ {ddTag}</span>
-            {plan.phases === 2 && <span style={{ color: C.flame }}>{t("two_phase_badge")}</span>}
+            {plan.phases === 2 && <span style={{ color: C.cinnabar }}>{t("two_phase_badge")}</span>}
           </div>
         </>
       )}
@@ -1704,34 +913,34 @@ function AccountSummary({ plan, firm, isModified }) {
 
   return (
     <section style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 24px 0" }} data-testid="account-summary">
-      <div className="fg-panel" style={{ padding: 16, borderColor: C.borderHot }}>
+      <div className="fg-panel" style={{ padding: 16, borderColor: C.haze }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start",
                       marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
           <div>
-            <div style={{ color: C.ember, fontSize: 11, letterSpacing: 0.3, fontWeight: 700, textTransform: "uppercase" }}>
+            <div style={{ color: C.brass, fontSize: 11, letterSpacing: 0.3, fontWeight: 700, textTransform: "uppercase" }}>
               › {t("account_summary_title")}
             </div>
-            <div style={{ color: C.ash, fontSize: 11, marginTop: 3 }}>› {t("account_summary_intro")}</div>
+            <div style={{ color: C.smoke, fontSize: 11, marginTop: 3 }}>› {t("account_summary_intro")}</div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ color: C.ash, fontSize: 10, letterSpacing: 0.25 }}>{t("selected_plan_label")}</div>
+            <div style={{ color: C.smoke, fontSize: 10, letterSpacing: 0.25 }}>{t("selected_plan_label")}</div>
             <div style={{ color: C.bone, fontSize: 14, fontWeight: 700, marginTop: 3, letterSpacing: 0.02 }}>
               {firm.name.toUpperCase()}
-              <span style={{ color: C.ash, margin: "0 8px" }}>·</span>
+              <span style={{ color: C.smoke, margin: "0 8px" }}>·</span>
               {plan.label}
-              {isModified && <span style={{ marginLeft: 8, color: C.flame, fontSize: 9,
-                                             padding: "1px 5px", border: `1px solid ${C.flame}`,
-                                             background: `${C.flame}15`, letterSpacing: 0.2 }}>
+              {isModified && <span style={{ marginLeft: 8, color: C.cinnabar, fontSize: 9,
+                                             padding: "1px 5px", border: `1px solid ${C.cinnabar}`,
+                                             background: `${C.cinnabar}15`, letterSpacing: 0.2 }}>
                 {t("modified_badge")}
               </span>}
             </div>
           </div>
         </div>
-        <ul style={{ margin: 0, padding: 0, listStyle: "none", color: C.boneDim, fontSize: 12.5, lineHeight: 1.9 }}>
+        <ul style={{ margin: 0, padding: 0, listStyle: "none", color: C.linen, fontSize: 12.5, lineHeight: 1.9 }}>
           {lines.map((l, i) => (
-            <li key={i} style={{ borderBottom: i < lines.length - 1 ? `1px dashed ${C.border}` : "none",
+            <li key={i} style={{ borderBottom: i < lines.length - 1 ? `1px dashed ${C.dust}` : "none",
                                  padding: "4px 0" }}>
-              <span style={{ color: C.ember, marginRight: 8 }}>›</span>{l}
+              <span style={{ color: C.brass, marginRight: 8 }}>›</span>{l}
             </li>
           ))}
         </ul>
@@ -1803,8 +1012,8 @@ function AccountEditor({ draft, onChange, onPhase2Change, unlocked, onResetToPre
                    ]}
                    onChange={v => onChange({ phases: parseInt(v) })} testId="acc-phases" />
       {d.phases === 2 && d.phase2 && (
-        <div style={{ padding: 8, borderLeft: `2px solid ${C.flame}`, background: `${C.flame}10`, marginTop: 8 }}>
-          <div style={{ fontSize: 10, color: C.flame, letterSpacing: 0.3, marginBottom: 6, fontWeight: 700 }}>╳ PHASE·02</div>
+        <div style={{ padding: 8, borderLeft: `2px solid ${C.cinnabar}`, background: `${C.cinnabar}10`, marginTop: 8 }}>
+          <div style={{ fontSize: 10, color: C.cinnabar, letterSpacing: 0.3, marginBottom: 6, fontWeight: 700 }}>╳ PHASE·02</div>
           <NumField label={t("field_target")} prefix="$" value={d.phase2.target} onChange={v => onPhase2Change({ target: v })} disabled={!unlocked} testId="acc-p2-target" />
           <NumField label={t("field_min_days")} value={d.phase2.minDays ?? 0} onChange={v => onPhase2Change({ minDays: v ?? 0 })} disabled={!unlocked} testId="acc-p2-mindays" />
           <ToggleRow label={t("field_max_days")} on={d.phase2.maxDays !== null && d.phase2.maxDays !== undefined}
@@ -1856,13 +1065,13 @@ function ResultsPanel({ results, loading, plan, firm, isModified, onExportJSON, 
 function Warnings({ plan, firm, isModified }) {
   const { t } = useT();
   const warns = [];
-  if (isModified) warns.push({ color: C.flame, msg: t("warn_modified") });
-  if (plan.feeType === "monthly") warns.push({ color: C.ember, msg: t("warn_monthly_fee", { fee: fmtMoney(plan.fee) }) });
-  if (firm.id === "apex_eod" || firm.id === "apex_intraday") warns.push({ color: C.flame, msg: t("warn_apex") });
-  if (firm.id === "topstep") warns.push({ color: C.boneDim, msg: t("warn_topstep") });
-  if (plan.consistency && plan.consistencyType === "vs_target") warns.push({ color: C.ember, msg: t("warn_cons_vs_target", { pct: (plan.consistency * 100).toFixed(0) }) });
-  if (plan.consistency && plan.consistencyType === "vs_total")  warns.push({ color: C.ember, msg: t("warn_cons_vs_total",  { pct: (plan.consistency * 100).toFixed(0) }) });
-  if (plan.phases === 2 && plan.phase2) warns.push({ color: C.flame, msg: t("warn_two_phase", { t1: fmtMoney(plan.target), t2: fmtMoney(plan.phase2.target) }) });
+  if (isModified) warns.push({ color: C.cinnabar, msg: t("warn_modified") });
+  if (plan.feeType === "monthly") warns.push({ color: C.brass, msg: t("warn_monthly_fee", { fee: fmtMoney(plan.fee) }) });
+  if (firm.id === "apex_eod" || firm.id === "apex_intraday") warns.push({ color: C.cinnabar, msg: t("warn_apex") });
+  if (firm.id === "topstep") warns.push({ color: C.linen, msg: t("warn_topstep") });
+  if (plan.consistency && plan.consistencyType === "vs_target") warns.push({ color: C.brass, msg: t("warn_cons_vs_target", { pct: (plan.consistency * 100).toFixed(0) }) });
+  if (plan.consistency && plan.consistencyType === "vs_total")  warns.push({ color: C.brass, msg: t("warn_cons_vs_total",  { pct: (plan.consistency * 100).toFixed(0) }) });
+  if (plan.phases === 2 && plan.phase2) warns.push({ color: C.cinnabar, msg: t("warn_two_phase", { t1: fmtMoney(plan.target), t2: fmtMoney(plan.phase2.target) }) });
   if (!warns.length) return null;
   return (
     <div style={{ marginBottom: 10 }}>
@@ -1875,10 +1084,10 @@ function LoadingState() {
   const { t } = useT();
   return (
     <div className="fg-panel" style={{ padding: 60, textAlign: "center" }}>
-      <div style={{ fontSize: 26, color: C.flame, letterSpacing: 0.3 }}>
+      <div style={{ fontSize: 26, color: C.cinnabar, letterSpacing: 0.3 }}>
         [ <span className="fg-dots">···</span>&nbsp;{t("btn_running").replace(/[[\]]/g, "").trim().toUpperCase()}&nbsp;<span className="fg-dots">···</span> ]
       </div>
-      <div style={{ color: C.ash, marginTop: 14, fontSize: 11, letterSpacing: 0.2 }}>
+      <div style={{ color: C.smoke, marginTop: 14, fontSize: 11, letterSpacing: 0.2 }}>
         › {t("loading_msg", { n: "monte-carlo" })}
       </div>
     </div>
@@ -1889,11 +1098,11 @@ function EmptyState() {
   const { t } = useT();
   return (
     <div className="fg-panel" style={{ padding: 48, textAlign: "center" }}>
-      <div style={{ fontSize: 32, color: C.borderHot }}>◇</div>
-      <div style={{ marginTop: 12, fontSize: 13, color: C.boneDim }}>
-        {t("empty_configure")}<span style={{ color: C.ember }}>{t("btn_run")}</span>
+      <div style={{ fontSize: 32, color: C.haze }}>◇</div>
+      <div style={{ marginTop: 12, fontSize: 13, color: C.linen }}>
+        {t("empty_configure")}<span style={{ color: C.brass }}>{t("btn_run")}</span>
       </div>
-      <div style={{ marginTop: 6, fontSize: 11, color: C.ash }}>› {t("empty_render_here")}</div>
+      <div style={{ marginTop: 6, fontSize: 11, color: C.smoke }}>› {t("empty_render_here")}</div>
     </div>
   );
 }
@@ -1913,22 +1122,22 @@ function ResultsDashboard({ results, plan }) {
   const { t } = useT();
   const r = results;
   const passing = r.pPass > r.ruinaMin;
-  const evColor = r.ev >= 0 ? C.bone : C.flame;
+  const evColor = r.ev >= 0 ? C.bone : C.cinnabar;
   const failTotal = r.pDD + r.pTimeout + r.pDLL;
 
   let fourth;
   if (r.pTimeout > 0.01) fourth = { label: t("kpi_p_timeout"), value: fmtPct(r.pTimeout), color: C.brass,     sub: t("kpi_p_timeout_sub") };
-  else if (r.pDLL > 0.01) fourth = { label: t("kpi_p_dll"),     value: fmtPct(r.pDLL),     color: C.bloodDark, sub: t("kpi_p_dll_sub") };
-  else                    fourth = { label: t("kpi_p_fail"),    value: fmtPct(failTotal),  color: C.flame,     sub: t("kpi_p_fail_sub") };
+  else if (r.pDLL > 0.01) fourth = { label: t("kpi_p_dll"),     value: fmtPct(r.pDLL),     color: C.oxide, sub: t("kpi_p_dll_sub") };
+  else                    fourth = { label: t("kpi_p_fail"),    value: fmtPct(failTotal),  color: C.cinnabar,     sub: t("kpi_p_fail_sub") };
 
   const ROI = r.avgCost > 0 ? ((r.payout - r.avgCost) / r.avgCost) * 100 : 0;
 
   const distData = [
     { name: "PASS", pct: +(r.pPass * 100).toFixed(2), fill: C.bone },
-    { name: "DD",   pct: +(r.pDD   * 100).toFixed(2), fill: C.flame },
+    { name: "DD",   pct: +(r.pDD   * 100).toFixed(2), fill: C.cinnabar },
   ];
   if (r.pTimeout > 0) distData.push({ name: "TIMEOUT", pct: +(r.pTimeout * 100).toFixed(2), fill: C.brass });
-  if (r.pDLL     > 0) distData.push({ name: "DLL",     pct: +(r.pDLL     * 100).toFixed(2), fill: C.bloodDark });
+  if (r.pDLL     > 0) distData.push({ name: "DLL",     pct: +(r.pDLL     * 100).toFixed(2), fill: C.oxide });
 
   return (
     <div className="oracle-editorial" data-testid="results-dashboard">
@@ -1949,7 +1158,7 @@ function ResultsDashboard({ results, plan }) {
         </div>
         <div className="oracle-secondary" data-testid="kpi-pdd">
           <div className="lbl">{t("kpi_p_dd")}</div>
-          <div className="val" style={{ color: C.flame }}>{fmtPct(r.pDD)}</div>
+          <div className="val" style={{ color: C.cinnabar }}>{fmtPct(r.pDD)}</div>
           <div className="sub">{t("kpi_p_dd_sub")}</div>
         </div>
       </div>
@@ -1958,13 +1167,13 @@ function ResultsDashboard({ results, plan }) {
       <div className="oracle-strip-title">{t("chart_result_dist")}</div>
       <div className="oracle-strip">
         <div><span className="lbl">pass</span>
-          <span className="val" style={{ color: passing ? C.bone : C.flame }}>{fmtPct(r.pPass)}</span></div>
+          <span className="val" style={{ color: passing ? C.bone : C.cinnabar }}>{fmtPct(r.pPass)}</span></div>
         <div><span className="lbl">dd</span>
-          <span className="val" style={{ color: C.flame }}>{fmtPct(r.pDD)}</span></div>
+          <span className="val" style={{ color: C.cinnabar }}>{fmtPct(r.pDD)}</span></div>
         <div><span className="lbl">timeout</span>
           <span className="val" style={{ color: C.brass }}>{r.pTimeout > 0.001 ? fmtPct(r.pTimeout) : "—"}</span></div>
         <div><span className="lbl">dll</span>
-          <span className="val" style={{ color: C.bloodDark }}>{r.pDLL > 0.001 ? fmtPct(r.pDLL) : "—"}</span></div>
+          <span className="val" style={{ color: C.oxide }}>{r.pDLL > 0.001 ? fmtPct(r.pDLL) : "—"}</span></div>
       </div>
 
       {/* Timing strip */}
@@ -1998,8 +1207,8 @@ function ResultsDashboard({ results, plan }) {
           <ChartTitle title={t("chart_result_dist")} />
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={distData} margin={{ top: 20, right: 10, left: 4, bottom: 0 }}>
-              <XAxis dataKey="name" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} />
-              <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} unit="%" />
+              <XAxis dataKey="name" stroke={C.smoke} tickLine={false} axisLine={{ stroke: C.dust }} />
+              <YAxis stroke={C.smoke} tickLine={false} axisLine={{ stroke: C.dust }} unit="%" />
               <Tooltip content={<CTooltip />} cursor={{ fill: `${C.brass}15` }} />
               <Bar dataKey="pct"
                    label={{ position: "top", fill: C.bone, fontSize: 11, formatter: (v) => `${v}%` }}>
@@ -2014,8 +1223,8 @@ function ResultsDashboard({ results, plan }) {
           {r.histPass.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={r.histPass} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
-                <XAxis dataKey="day" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} />
-                <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} unit="%" />
+                <XAxis dataKey="day" stroke={C.smoke} tickLine={false} axisLine={{ stroke: C.dust }} />
+                <YAxis stroke={C.smoke} tickLine={false} axisLine={{ stroke: C.dust }} unit="%" />
                 <Tooltip content={<CTooltip />} cursor={{ fill: `${C.brass}15` }} />
                 <ReferenceLine x={Math.round(r.medianPass)} stroke={C.brass} strokeDasharray="2 3" />
                 <Bar dataKey="pct" fill={C.bone} />
@@ -2029,11 +1238,11 @@ function ResultsDashboard({ results, plan }) {
           {r.histFail.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={r.histFail} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
-                <XAxis dataKey="day" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} />
-                <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} unit="%" />
-                <Tooltip content={<CTooltip />} cursor={{ fill: `${C.flame}15` }} />
+                <XAxis dataKey="day" stroke={C.smoke} tickLine={false} axisLine={{ stroke: C.dust }} />
+                <YAxis stroke={C.smoke} tickLine={false} axisLine={{ stroke: C.dust }} unit="%" />
+                <Tooltip content={<CTooltip />} cursor={{ fill: `${C.cinnabar}15` }} />
                 <ReferenceLine x={Math.round(r.medianFail)} stroke={C.brass} strokeDasharray="2 3" />
-                <Bar dataKey="pct" fill={C.flame} />
+                <Bar dataKey="pct" fill={C.cinnabar} />
               </BarChart>
             </ResponsiveContainer>
           ) : <EmptyChart />}
@@ -2047,9 +1256,9 @@ function ResultsDashboard({ results, plan }) {
           <div className="fg-panel" style={{ padding: 16 }} data-testid="chart-attempt-curve">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={r.attemptCurve} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
-                <XAxis dataKey="attempts" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }}
-                       label={{ value: "attempts", position: "insideBottom", offset: -2, fill: C.ash, fontSize: 10 }} />
-                <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} unit="%" domain={[0, 100]} />
+                <XAxis dataKey="attempts" stroke={C.smoke} tickLine={false} axisLine={{ stroke: C.dust }}
+                       label={{ value: "attempts", position: "insideBottom", offset: -2, fill: C.smoke, fontSize: 10 }} />
+                <YAxis stroke={C.smoke} tickLine={false} axisLine={{ stroke: C.dust }} unit="%" domain={[0, 100]} />
                 <Tooltip content={<CTooltip />} cursor={{ fill: `${C.brass}15` }}
                          formatter={(v, n, p) => [`${v}% · bankroll ${fmtMoney(p.payload.bankroll)}`, "p(≥1 pass)"]} />
                 <ReferenceLine y={50} stroke={C.brass} strokeDasharray="2 3" />
@@ -2058,7 +1267,7 @@ function ResultsDashboard({ results, plan }) {
               </BarChart>
             </ResponsiveContainer>
             <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10,
-                          fontFamily: "var(--mono)", fontSize: 11.5, color: C.boneDim }}>
+                          fontFamily: "var(--mono)", fontSize: 11.5, color: C.linen }}>
               {[50, 75, 95, 99].map(target => {
                 const row = r.attemptCurve.find(x => x.pAtLeastOne >= target);
                 return (
@@ -2084,26 +1293,26 @@ function ResultsDashboard({ results, plan }) {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
               <div>
                 <div className="fg-label">{t("comm_daily")}</div>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 22, color: C.flame, marginTop: 4 }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 22, color: C.cinnabar, marginTop: 4 }}>
                   −{fmtMoney(r.commissionImpact.daily)}
                 </div>
               </div>
               <div>
                 <div className="fg-label">{t("comm_per_attempt")}</div>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 22, color: C.flame, marginTop: 4 }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 22, color: C.cinnabar, marginTop: 4 }}>
                   −{fmtMoney(r.commissionImpact.perAttempt)}
                 </div>
-                <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
+                <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.linen,
                               fontSize: 11.5, marginTop: 4 }}>
                   ≈ {Math.round(r.commissionImpact.avgDays)} days × daily
                 </div>
               </div>
               <div>
                 <div className="fg-label">{t("comm_pct_target")}</div>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 22, color: C.flame, marginTop: 4 }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 22, color: C.cinnabar, marginTop: 4 }}>
                   {r.finalTarget > 0 ? ((r.commissionImpact.perAttempt / r.finalTarget) * 100).toFixed(1) : "0"}%
                 </div>
-                <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
+                <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.linen,
                               fontSize: 11.5, marginTop: 4 }}>
                   of gross target
                 </div>
@@ -2120,7 +1329,7 @@ function ResultsDashboard({ results, plan }) {
       <div className="oracle-strip-title" style={{ marginTop: 28 }}>{t("ledger_chapter_title")}</div>
       <div className="oracle-ledger" data-testid="stats-row">
         <div className="row"><span className="k">{t("stat_p_pass")}</span>
-          <span className="v" style={{ color: passing ? C.bone : C.flame }}>{fmtPct(r.pPass)}</span></div>
+          <span className="v" style={{ color: passing ? C.bone : C.cinnabar }}>{fmtPct(r.pPass)}</span></div>
         <div className="row"><span className="k">{t("stat_ev_net")}</span>
           <span className="v" style={{ color: evColor }}>{(r.ev >= 0 ? "+" : "") + fmtMoney(r.ev)}</span></div>
         <div className="row"><span className="k">{t("stat_br99")}</span>
@@ -2128,11 +1337,11 @@ function ResultsDashboard({ results, plan }) {
         <div className="row"><span className="k">{t("stat_att99")}</span>
           <span className="v">{r.passEssentiallyZero ? "—" : fmtInt(r.n99)}</span></div>
         <div className="row"><span className="k">{t("stat_roi")}</span>
-          <span className="v" style={{ color: ROI >= 0 ? C.bone : C.flame }}>{ROI.toFixed(0)}%</span></div>
+          <span className="v" style={{ color: ROI >= 0 ? C.bone : C.cinnabar }}>{ROI.toFixed(0)}%</span></div>
         <div className="row"><span className="k">{t("stat_split")}</span>
           <span className="v">{(plan.profitSplit * 100).toFixed(0)}%</span></div>
-        <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px dotted ${C.borderHot}`,
-                      color: C.ash, fontSize: 11, letterSpacing: 0.08, fontFamily: "var(--mono)", fontWeight: 300 }}>
+        <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px dotted ${C.haze}`,
+                      color: C.smoke, fontSize: 11, letterSpacing: 0.08, fontFamily: "var(--mono)", fontWeight: 300 }}>
           {t("stat_footer", { sims: r.nSims.toLocaleString("en-US"), pass: r.nPass, dd: r.nDD, to: r.nTimeout, dll: r.nDLL })}
           <span style={{ color: C.brass }}>{fmtMoney(r.payout)}</span>
         </div>
@@ -2141,176 +1350,12 @@ function ResultsDashboard({ results, plan }) {
   );
 }
 
-function ChartTitle({ title, caption }) {
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={{ color: C.bone, fontSize: 11, fontWeight: 700, letterSpacing: 0.25, textTransform: "uppercase" }}>{title}</div>
-      {caption && <div style={{ color: C.ash, fontSize: 10, marginTop: 3, letterSpacing: 0.08 }}>› {caption}</div>}
-    </div>
-  );
-}
+// ChartTitle / FundedLifecyclePanel / EmptyChart moved to src/components/
 
-// ─────────────────── Funded Lifecycle Panel (post-PASS) ───────────────────
-function FundedLifecyclePanel({ pp, pPass, avgCost }) {
-  const { t } = useT();
-  const netColor = pp.meanNet >= 0 ? C.bone : C.flame;
-  const evColor  = pp.evLifetime >= 0 ? C.bone : C.flame;
-
-  return (
-    <div style={{ marginTop: 32 }} data-testid="funded-lifecycle">
-      <div className="oracle-strip-title">{t("oracle_funded_title")}</div>
-      <div style={{ color: C.ash, fontSize: 10.5, marginBottom: 10, letterSpacing: 0.08,
-                    fontFamily: "var(--mono)" }}>
-        › {t("oracle_funded_hint")} · {pp.ppRuns.toLocaleString("en-US")} PASS runs · horizon {pp.horizonMonths}m ({pp.horizonDays}d)
-      </div>
-
-      {/* Hero row */}
-      <div className="oracle-hero-kpis" style={{ marginBottom: 18 }}>
-        <div className="oracle-ppass passing" data-testid="pp-kpi-net">
-          <div className="lbl">{t("kpi_pp_expected_net")}</div>
-          <div className="big" style={{ color: netColor }}>
-            {(pp.meanNet >= 0 ? "+" : "-") + fmtMoney(Math.abs(pp.meanNet))}
-          </div>
-          <div className="rule" />
-          <div className="sub">{t("kpi_pp_expected_net_sub", { h: pp.horizonMonths })}</div>
-        </div>
-        <div className="oracle-secondary" data-testid="pp-kpi-lifetime-ev">
-          <div className="lbl">{t("kpi_pp_lifetime_ev")}</div>
-          <div className="val" style={{ color: evColor }}>
-            {(pp.evLifetime >= 0 ? "+" : "-") + fmtMoney(Math.abs(pp.evLifetime))}
-          </div>
-          <div className="sub">{t("kpi_pp_lifetime_ev_sub")}</div>
-        </div>
-        <div className="oracle-secondary" data-testid="pp-kpi-payouts">
-          <div className="lbl">{t("kpi_pp_payouts")}</div>
-          <div className="val" style={{ color: C.brass }}>
-            {pp.meanPayouts.toFixed(2)}
-          </div>
-          <div className="sub">{t("kpi_pp_payouts_sub")} · med {pp.medianPayouts}</div>
-        </div>
-      </div>
-
-      {/* Strip row */}
-      <div className="oracle-strip">
-        <div data-testid="pp-survive-3m">
-          <span className="lbl">{t("kpi_pp_survive3")}</span>
-          <span className="val">{fmtPct(pp.pSurvive3m)}</span>
-          <span className="sub">3 months · {Math.round(pp.meanDaysSurvived)}d mean survival</span>
-        </div>
-        <div data-testid="pp-survive-6m">
-          <span className="lbl">{t("kpi_pp_survive6")}</span>
-          <span className="val">{fmtPct(pp.pSurvive6m)}</span>
-          <span className="sub">6 months</span>
-        </div>
-        <div data-testid="pp-survive-12m">
-          <span className="lbl">{t("kpi_pp_survive12")}</span>
-          <span className="val">{fmtPct(pp.pSurvive12m)}</span>
-          <span className="sub">12 months</span>
-        </div>
-        <div data-testid="pp-kpi-first">
-          <span className="lbl">{t("kpi_pp_first_payout")}</span>
-          <span className="val" style={{ color: C.brass }}>
-            {pp.medFirstPayoutDay ? `${Math.round(pp.medFirstPayoutDay)}d` : "—"}
-          </span>
-          <span className="sub">{t("kpi_pp_first_payout_sub")}</span>
-        </div>
-      </div>
-
-      {/* Breach breakdown */}
-      <div className="oracle-strip" style={{ marginTop: 10 }} data-testid="pp-breach-strip">
-        <div>
-          <span className="lbl">{t("kpi_pp_no_breach")}</span>
-          <span className="val" style={{ color: C.bone }}>{fmtPct(pp.breachPct.None)}</span>
-          <span className="sub">reached horizon</span>
-        </div>
-        <div>
-          <span className="lbl">{t("kpi_pp_breach_dd")}</span>
-          <span className="val" style={{ color: C.flame }}>{fmtPct(pp.breachPct.DD)}</span>
-          <span className="sub">drawdown</span>
-        </div>
-        <div>
-          <span className="lbl">{t("kpi_pp_breach_dll")}</span>
-          <span className="val" style={{ color: C.bloodDark }}>{fmtPct(pp.breachPct.DLL)}</span>
-          <span className="sub">daily loss</span>
-        </div>
-        <div>
-          <span className="lbl">{t("kpi_pp_p10p90")}</span>
-          <span className="val">
-            {fmtMoney(pp.p10Net)}<span style={{ color: C.ash }}> / </span>{fmtMoney(pp.p90Net)}
-          </span>
-          <span className="sub">10th / 90th percentile</span>
-        </div>
-      </div>
-
-      {/* Charts */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-                    gap: 14, marginTop: 18 }}>
-        <div className="fg-panel" style={{ padding: 16 }} data-testid="pp-chart-net-hist">
-          <ChartTitle title={t("chart_pp_payout_hist")}
-                      caption={`median ${fmtMoney(pp.medianNet)} · mean ${fmtMoney(pp.meanNet)}`} />
-          {pp.histNet.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={pp.histNet} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
-                <XAxis dataKey="bucket" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }}
-                       tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} unit="%" />
-                <Tooltip content={<CTooltip />} cursor={{ fill: `${C.brass}15` }}
-                         formatter={(v) => [`${v}%`, "share"]}
-                         labelFormatter={(l) => `≥ ${fmtMoney(l)}`} />
-                <Bar dataKey="pct" fill={C.brass} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <EmptyChart />}
-        </div>
-
-        <div className="fg-panel" style={{ padding: 16 }} data-testid="pp-chart-count">
-          <ChartTitle title={t("chart_pp_payout_count")}
-                      caption={`mean ${pp.meanPayouts.toFixed(2)} payouts`} />
-          {pp.payoutHistogram.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={pp.payoutHistogram} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
-                <XAxis dataKey="count" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }}
-                       label={{ value: "payouts", position: "insideBottom", offset: -2, fill: C.ash, fontSize: 10 }} />
-                <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} unit="%" />
-                <Tooltip content={<CTooltip />} cursor={{ fill: `${C.brass}15` }} />
-                <Bar dataKey="pct" fill={C.bone} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <EmptyChart />}
-        </div>
-
-        <div className="fg-panel" style={{ padding: 16 }} data-testid="pp-chart-by-month">
-          <ChartTitle title={t("chart_pp_by_month")}
-                      caption={`total expected net (across PASS runs)`} />
-          {pp.payoutsByMonth.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={pp.payoutsByMonth} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
-                <XAxis dataKey="month" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }}
-                       label={{ value: "month", position: "insideBottom", offset: -2, fill: C.ash, fontSize: 10 }} />
-                <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }}
-                       tickFormatter={(v) => `$${(v / 1000).toFixed(1)}k`} />
-                <Tooltip content={<CTooltip />} cursor={{ fill: `${C.brass}15` }}
-                         formatter={(v) => [fmtMoney(v), "mean net"]} />
-                <Bar dataKey="meanNet" fill={C.ember} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <EmptyChart />}
-        </div>
-      </div>
-    </div>
-  );
-}
-function EmptyChart() {
-  const { t } = useT();
-  return (
-    <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center",
-                  color: C.borderHot, fontSize: 11, letterSpacing: 0.2 }}>{t("chart_empty")}</div>
-  );
-}
 function Stat({ label, value, color }) {
   return (
     <div style={{ padding: "0 14px" }}>
-      <div style={{ color: C.ash, fontSize: 9, letterSpacing: 0.25 }}>{label}</div>
+      <div style={{ color: C.smoke, fontSize: 9, letterSpacing: 0.25 }}>{label}</div>
       <div style={{ color, fontSize: 15, marginTop: 5, fontWeight: 700, letterSpacing: -0.01 }}>{value}</div>
     </div>
   );
@@ -2323,35 +1368,35 @@ function CompareRack({ slots, onRemove, onClear, onRunAll, loading }) {
   return (
     <div className="fg-panel" style={{ padding: 16, marginBottom: 16 }} data-testid="compare-rack">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div style={{ color: C.flame, fontSize: 12, fontWeight: 700, letterSpacing: 0.25 }}>
-          ╳ {t("compare_rack_title")} <span style={{ color: C.ash, fontWeight: 400 }}>· {t("compare_rack_slots", { n: slots.length })}</span>
+        <div style={{ color: C.cinnabar, fontSize: 12, fontWeight: 700, letterSpacing: 0.25 }}>
+          ╳ {t("compare_rack_title")} <span style={{ color: C.smoke, fontWeight: 400 }}>· {t("compare_rack_slots", { n: slots.length })}</span>
         </div>
         <button className="fg-btn-ghost" onClick={onClear} data-testid="btn-compare-clear">{t("btn_compare_clear")}</button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8, marginBottom: 12 }}>
         {slots.map((s, i) => (
           <div key={s.id} className="fg-panel"
-               style={{ padding: 10, borderColor: s.results ? C.ember : C.border }}
+               style={{ padding: 10, borderColor: s.results ? C.brass : C.dust }}
                data-testid={`compare-slot-${i}`}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 }}>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ color: C.ash, fontSize: 9, letterSpacing: 0.3 }}>{t("compare_slot", { n: String(i + 1).padStart(2, "0") })}</div>
+                <div style={{ color: C.smoke, fontSize: 9, letterSpacing: 0.3 }}>{t("compare_slot", { n: String(i + 1).padStart(2, "0") })}</div>
                 <div style={{ color: C.bone, fontSize: 12, fontWeight: 700, marginTop: 2, overflow: "hidden",
                               textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.firmName}</div>
-                <div style={{ color: C.boneDim, fontSize: 11, marginTop: 2 }}>› {s.planLabel}</div>
+                <div style={{ color: C.linen, fontSize: 11, marginTop: 2 }}>› {s.planLabel}</div>
               </div>
               <button className="fg-btn-ghost" style={{ padding: "2px 6px", fontSize: 11 }}
                       onClick={() => onRemove(s.id)} data-testid={`btn-compare-remove-${i}`}>✕</button>
             </div>
-            <div style={{ marginTop: 6, display: "flex", gap: 10, fontSize: 10, color: C.ash, letterSpacing: 0.1 }}>
+            <div style={{ marginTop: 6, display: "flex", gap: 10, fontSize: 10, color: C.smoke, letterSpacing: 0.1 }}>
               <span>cap · <span style={{ color: C.bone }}>{fmtMoney(s.plan.capital)}</span></span>
-              <span>tgt · <span style={{ color: C.ember }}>{fmtMoney(s.plan.target)}</span></span>
-              <span>dd · <span style={{ color: C.blood }}>{fmtMoney(s.plan.ddValue)}</span></span>
+              <span>tgt · <span style={{ color: C.brass }}>{fmtMoney(s.plan.target)}</span></span>
+              <span>dd · <span style={{ color: C.cinnabar }}>{fmtMoney(s.plan.ddValue)}</span></span>
             </div>
             {s.results && (
-              <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${C.border}`, fontSize: 10 }}>
-                <div style={{ color: C.ash }}>p(pass) · <span style={{ color: C.ember }}>{fmtPct(s.results.pPass)}</span></div>
-                <div style={{ color: C.ash }}>ev · <span style={{ color: s.results.ev >= 0 ? C.ember : C.blood }}>
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${C.dust}`, fontSize: 10 }}>
+                <div style={{ color: C.smoke }}>p(pass) · <span style={{ color: C.brass }}>{fmtPct(s.results.pPass)}</span></div>
+                <div style={{ color: C.smoke }}>ev · <span style={{ color: s.results.ev >= 0 ? C.brass : C.cinnabar }}>
                   {(s.results.ev >= 0 ? "+" : "") + fmtMoney(s.results.ev)}
                 </span></div>
               </div>
@@ -2368,7 +1413,7 @@ function CompareRack({ slots, onRemove, onClear, onRunAll, loading }) {
           : slots.length < 2 ? t("btn_run_all_disabled") : t("btn_run_all", { n: slots.length })}
       </button>
       {haveResults && !loading && (
-        <div style={{ color: C.ash, fontSize: 10.5, marginTop: 10, letterSpacing: 0.15, textAlign: "center" }}>
+        <div style={{ color: C.smoke, fontSize: 10.5, marginTop: 10, letterSpacing: 0.15, textAlign: "center" }}>
           › {t("compare_help")}
         </div>
       )}
@@ -2401,11 +1446,11 @@ function CompareResults({ slots, onExportJSON, onExportPNG }) {
     };
   });
   const ranked = [...rows].sort((a, b) => b.ev - a.ev);
-  const headerStyle = { color: C.ash, fontSize: 10, padding: "10px 10px", letterSpacing: 0.25, textAlign: "right",
-                        borderBottom: `1px dashed ${C.borderHot}`, fontWeight: 600 };
-  const cellStyle = { padding: "10px 10px", fontSize: 12, textAlign: "right", borderBottom: `1px dashed ${C.border}` };
+  const headerStyle = { color: C.smoke, fontSize: 10, padding: "10px 10px", letterSpacing: 0.25, textAlign: "right",
+                        borderBottom: `1px dashed ${C.haze}`, fontWeight: 600 };
+  const cellStyle = { padding: "10px 10px", fontSize: 12, textAlign: "right", borderBottom: `1px dashed ${C.dust}` };
   const winner = (isBest) => isBest
-    ? { color: C.ember, fontWeight: 700, textShadow: `0 0 8px ${C.ember}55` }
+    ? { color: C.brass, fontWeight: 700, textShadow: `0 0 8px ${C.brass}55` }
     : {};
   return (
     <div className="fg-panel" style={{ padding: 16, marginBottom: 16 }} data-testid="compare-results">
@@ -2415,7 +1460,7 @@ function CompareResults({ slots, onExportJSON, onExportPNG }) {
           <div style={{ color: C.bone, fontSize: 13, fontWeight: 700, letterSpacing: 0.2, textTransform: "uppercase" }}>
             {t("compare_results_title")}
           </div>
-          <div style={{ color: C.ash, fontSize: 11, marginTop: 3 }}>› {t("compare_results_sub")}</div>
+          <div style={{ color: C.smoke, fontSize: 11, marginTop: 3 }}>› {t("compare_results_sub")}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="fg-btn-ghost" onClick={onExportPNG} data-testid="btn-compare-png">{t("btn_export_png")}</button>
@@ -2440,26 +1485,26 @@ function CompareResults({ slots, onExportJSON, onExportPNG }) {
             {ranked.map((r, i) => (
               <tr key={r.id}>
                 <td style={{ ...cellStyle, textAlign: "left" }}>
-                  <span style={{ color: i === 0 ? C.ember : C.ash, marginRight: 10, fontWeight: 700 }}>
+                  <span style={{ color: i === 0 ? C.brass : C.smoke, marginRight: 10, fontWeight: 700 }}>
                     {i === 0 ? "★" : `#${i + 1}`}
                   </span>
                   <span style={{ color: C.bone }}>{r.name}</span>
                 </td>
                 <td style={{ ...cellStyle, ...winner(r.pPass === bestPPass) }}>{fmtPct(r.pPass)}</td>
-                <td style={{ ...cellStyle, color: r.ev >= 0 ? C.ember : C.blood, ...winner(r.ev === bestEV) }}>
+                <td style={{ ...cellStyle, color: r.ev >= 0 ? C.brass : C.cinnabar, ...winner(r.ev === bestEV) }}>
                   {(r.ev >= 0 ? "+" : "") + fmtMoney(r.ev)}
                 </td>
-                <td style={{ ...cellStyle, color: C.boneDim }}>{fmtMoney(r.avgCost)}</td>
+                <td style={{ ...cellStyle, color: C.linen }}>{fmtMoney(r.avgCost)}</td>
                 <td style={{ ...cellStyle, ...winner(r.meanPass !== null && r.meanPass === bestMean) }}>
                   {r.meanPass !== null ? Math.round(r.meanPass) + "d" : "—"}
                 </td>
-                <td style={{ ...cellStyle, color: C.boneDim }}>
+                <td style={{ ...cellStyle, color: C.linen }}>
                   {r.p90 !== null ? Math.round(r.p90) + "d" : "—"}
                 </td>
                 <td style={{ ...cellStyle, ...winner(r.br95 !== null && r.br95 === bestBR95) }}>
                   {r.br95 !== null ? fmtMoney(r.br95) : "—"}
                 </td>
-                <td style={{ ...cellStyle, color: r.roi >= 0 ? C.ember : C.blood, ...winner(r.roi === bestROI) }}>
+                <td style={{ ...cellStyle, color: r.roi >= 0 ? C.brass : C.cinnabar, ...winner(r.roi === bestROI) }}>
                   {r.roi.toFixed(0)}%
                 </td>
               </tr>
@@ -2467,172 +1512,21 @@ function CompareResults({ slots, onExportJSON, onExportPNG }) {
           </tbody>
         </table>
       </div>
-      <div style={{ marginTop: 16, padding: "10px 12px", borderLeft: `2px solid ${C.ember}`,
-                    background: `${C.ember}08`, fontSize: 12, color: C.boneDim, lineHeight: 1.6 }}>
-        <span style={{ color: C.ember, fontWeight: 700, marginRight: 6 }}>{t("compare_winner_prefix")}</span>
+      <div style={{ marginTop: 16, padding: "10px 12px", borderLeft: `2px solid ${C.brass}`,
+                    background: `${C.brass}08`, fontSize: 12, color: C.linen, lineHeight: 1.6 }}>
+        <span style={{ color: C.brass, fontWeight: 700, marginRight: 6 }}>{t("compare_winner_prefix")}</span>
         <b style={{ color: C.bone }}>{ranked[0].name}</b>
-        <span style={{ color: C.ash }}>{t("compare_winner_ev")}</span>
-        <span style={{ color: C.ember }}>{(ranked[0].ev >= 0 ? "+" : "") + fmtMoney(ranked[0].ev)}</span>
-        <span style={{ color: C.ash }}>{t("compare_winner_ppass")}</span>
-        <span style={{ color: C.ember }}>{fmtPct(ranked[0].pPass)}</span>
+        <span style={{ color: C.smoke }}>{t("compare_winner_ev")}</span>
+        <span style={{ color: C.brass }}>{(ranked[0].ev >= 0 ? "+" : "") + fmtMoney(ranked[0].ev)}</span>
+        <span style={{ color: C.smoke }}>{t("compare_winner_ppass")}</span>
+        <span style={{ color: C.brass }}>{fmtPct(ranked[0].pPass)}</span>
       </div>
     </div>
   );
 }
 
 // ─────────────────────────── CSV modal ───────────────────────────
-function CsvModal({ onClose, onApply }) {
-  const { t } = useT();
-  const [text, setText] = useState("");
-  const [colIdx, setColIdx] = useState(null);
-  const [skipHeader, setSkipHeader] = useState(true);
+// CsvModal + StatMini moved to src/components/CsvModal.jsx
 
-  const parsed = useMemo(() => text.trim() ? parseCsv(text) : null, [text]);
-  const cols = useMemo(() => parsed ? detectColumns(parsed.rows) : [], [parsed]);
-
-  useEffect(() => {
-    if (!cols.length) return;
-    if (colIdx !== null && colIdx < cols.length) return;
-    const withNeg = cols.filter(c => c.hasNegatives && c.numericCount >= 3);
-    const candidate = withNeg.length
-      ? withNeg.reduce((a, b) => (b.numericCount > a.numericCount ? b : a))
-      : [...cols].reverse().find(c => c.numericCount >= 3) || cols[cols.length - 1];
-    setColIdx(candidate.index);
-  }, [cols, colIdx]);
-
-  const activeCol = colIdx ?? 0;
-  const preview = useMemo(() => {
-    if (!parsed) return null;
-    const values = extractColumn(parsed.rows, activeCol, skipHeader);
-    return calibrateStrategy(values);
-  }, [parsed, activeCol, skipHeader]);
-
-  const handleFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setText(String(ev.target.result || ""));
-    reader.readAsText(file);
-  };
-  const loadSample = () => {
-    const lines = ["day,pnl"];
-    for (let i = 1; i <= 90; i++) {
-      const isWin = Math.random() < 0.42;
-      const pnl = isWin
-        ? (400 + (Math.random() - 0.5) * 460).toFixed(2)
-        : (-180 + (Math.random() - 0.5) * 60).toFixed(2);
-      lines.push(`${i},${pnl}`);
-    }
-    setText(lines.join("\n"));
-  };
-
-  // Map error text
-  let errorMsg = null;
-  if (preview?.error) {
-    if (preview.error.startsWith("Need at least")) errorMsg = t("csv_err_samples");
-    else if (preview.error === "No winning days found.") errorMsg = t("csv_err_no_wins");
-    else if (preview.error === "No losing days found.")  errorMsg = t("csv_err_no_losses");
-    else errorMsg = preview.error;
-  }
-
-  return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 999, padding: 20,
-    }} onClick={onClose} data-testid="csv-modal">
-      <div className="fg-panel" style={{
-        width: "min(780px, 100%)", maxHeight: "90vh", overflow: "auto",
-        background: C.panel, padding: 20, borderColor: C.ember,
-        boxShadow: "0 0 40px rgba(255,184,0,0.25)",
-      }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <div style={{ color: C.bone, fontSize: 14, fontWeight: 700, letterSpacing: 0.2, textTransform: "uppercase" }}>
-            {t("csv_title")}
-          </div>
-          <button className="fg-btn-ghost" onClick={onClose} data-testid="btn-csv-close">{t("btn_csv_close")}</button>
-        </div>
-        <div style={{ color: C.ash, fontSize: 11, marginBottom: 14, lineHeight: 1.6 }}>
-          {t("csv_help_1")}<br />{t("csv_help_2")}
-        </div>
-        <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-          <label className="fg-btn-ghost" style={{ display: "inline-block", cursor: "pointer" }}>
-            {t("btn_csv_upload")}
-            <input type="file" accept=".csv,.txt,text/csv" onChange={handleFile}
-                   data-testid="csv-file-input" style={{ display: "none" }} />
-          </label>
-          <button className="fg-btn-ghost" onClick={loadSample} data-testid="btn-csv-sample">{t("btn_csv_sample")}</button>
-          <button className="fg-btn-ghost" onClick={() => setText("")} data-testid="btn-csv-clear">{t("btn_csv_clear")}</button>
-        </div>
-        <textarea className="fg-input" data-testid="csv-textarea"
-                  value={text} onChange={(e) => setText(e.target.value)}
-                  placeholder={t("csv_placeholder")}
-                  style={{ width: "100%", minHeight: 160, fontSize: 12, resize: "vertical", fontFamily: "var(--mono)" }} />
-
-        {parsed && cols.length > 0 && (
-          <div style={{ marginTop: 14 }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
-              <label className="fg-label">{t("csv_col_label")}</label>
-              <select className="fg-select" style={{ width: 200 }}
-                      value={activeCol} onChange={(e) => setColIdx(parseInt(e.target.value))}
-                      data-testid="csv-col-select">
-                {cols.map(c => (
-                  <option key={c.index} value={c.index}>
-                    {t("csv_col_option", { header: c.header, n: c.numericCount, neg: c.hasNegatives ? t("csv_col_neg") : "" })}
-                  </option>
-                ))}
-              </select>
-              <label className="fg-label" style={{ marginLeft: 10 }}>{t("csv_skip_header")}</label>
-              <Toggle on={skipHeader} onChange={setSkipHeader} testId="csv-skip-header" />
-            </div>
-
-            {errorMsg && (
-              <div style={{ color: C.blood, fontSize: 12, padding: "8px 10px",
-                            border: `1px solid ${C.blood}`, background: `${C.blood}10` }}>// {errorMsg}</div>
-            )}
-            {preview?.stats && (
-              <>
-                <div style={{ padding: 12, background: C.bg, border: `1px dashed ${C.border}`, marginBottom: 10 }}>
-                  <div style={{ color: C.ash, fontSize: 10, letterSpacing: 0.3, marginBottom: 6 }}>{t("csv_detected_title")}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, fontSize: 11 }}>
-                    <StatMini label={t("csv_samples")}  v={preview.stats.nSamples} c={C.bone} />
-                    <StatMini label={t("csv_wins")}     v={preview.stats.nWins}    c={C.ember} />
-                    <StatMini label={t("csv_losses")}   v={preview.stats.nLosses}  c={C.blood} />
-                    <StatMini label={t("csv_total")}    v={fmtMoney(preview.stats.totalPnl)} c={preview.stats.totalPnl >= 0 ? C.ember : C.blood} />
-                    <StatMini label={t("csv_avg_day")}  v={fmtMoney(preview.stats.avgDay)}   c={preview.stats.avgDay >= 0 ? C.ember : C.blood} />
-                  </div>
-                </div>
-                <div style={{ padding: 12, background: C.bg, border: `1px dashed ${C.ember}`, marginBottom: 14 }}>
-                  <div style={{ color: C.ember, fontSize: 10, letterSpacing: 0.3, marginBottom: 6 }}>{t("csv_calibrated_title")}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, fontSize: 11 }}>
-                    <StatMini label={t("field_wr")}        v={preview.strategy.wr.toFixed(3)} c={C.bone} />
-                    <StatMini label={t("field_mu_win")}    v={fmtMoney(preview.strategy.muWin)}     c={C.ember} />
-                    <StatMini label={t("field_sigma_win")} v={fmtMoney(preview.strategy.sigmaWin)}  c={C.boneDim} />
-                    <StatMini label={t("field_mu_loss")}   v={fmtMoney(preview.strategy.muLoss)}    c={C.blood} />
-                    <StatMini label={t("field_sigma_loss")} v={fmtMoney(preview.strategy.sigmaLoss)} c={C.boneDim} />
-                    <StatMini label={t("field_tail_prob")} v={preview.strategy.tailProb.toFixed(4)} c={C.flame} />
-                    <StatMini label={t("field_tail_mult")} v={preview.strategy.tailMult.toFixed(3)} c={C.flame} />
-                  </div>
-                </div>
-                <button className="fg-btn" onClick={() => onApply(preview.strategy)} data-testid="btn-csv-apply">
-                  {t("btn_csv_apply")}
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function StatMini({ label, v, c }) {
-  return (
-    <div>
-      <div style={{ color: C.ash, fontSize: 9, letterSpacing: 0.25 }}>{label}</div>
-      <div style={{ color: c, marginTop: 3, fontWeight: 700 }}>{v}</div>
-    </div>
-  );
-}
 
 export default App;

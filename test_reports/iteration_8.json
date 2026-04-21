@@ -1,0 +1,46 @@
+{
+  "summary": "Frontend-only regression test of the CLEANUP + POLISH pass (TAREAS 1-4) on https://eval-probability.preview.emergentagent.com. 11 of 13 acceptance checkpoints PASS. Two issues found: (1) CRITICAL — ignite-hint testid for 'chamber_missing' is UNREACHABLE because the whole hint IIFE sits inside {planDraft && (...)} in App.js (line 366-461); when no firm is selected, the STRATEGY tab instead renders the `strategy-empty` placeholder with a plain '← CHAMBER' button that has NO data-testid='ignite-hint-link'. TAREA 3 checkpoint 'chamber_missing' therefore fails to meet spec. (2) MINOR — Bootstrap textarea updates a local `raw` state on typing; `strategy.bootstrapData` only updates when the user clicks the `bootstrap-parse` button (or `bootstrap-paste` clipboard), so the `bootstrap_too_few` hint only appears AFTER parse click. Once parse is clicked with 10 numbers the hint correctly reads 'need at least 30 values · you have 10' with accurate count. All other acceptance items verified: palette is clean (zero occurrences of legacy #EFE547/#FFB800/#FF4500/#C8102E/#7B0F0F/#E8B923 in rendered HTML); all 4 tabs render (tab-chamber/tab-strategy/tab-oracle/tab-gloss); bootstrap_empty hint renders correctly on mode switch; simple-mode + plan selected runs IGNITE and ORACLE shows kpi-ppass; all 5 strategy collapsibles render (section-pnl, section-mae, section-costs, section-behavioral, section-postpass); post-pass enabled at horizon=12 produces all 11 funded-lifecycle testids (pp-kpi-net, pp-kpi-lifetime-ev, pp-kpi-payouts, pp-survive-3m/6m/12m, pp-kpi-first, pp-breach-strip, pp-chart-net-hist, pp-chart-count, pp-chart-by-month); CSV modal opens (csv-modal) with btn-csv-sample and textarea; Compare Rack accepts 2 plans (compare-slot-0/1) and btn-run-all fires; Glossary shows all 8 sections A(SIMULATION METHODS) through H(OPERATIONS); search 'winning days' surfaces WINNING DAYS term, 'calendar' surfaces CALENDAR VS TRADING DAYS; both new terms render in section H; zero JS console errors throughout; ES/EN lang toggle buttons respond.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "App.js · Strategy tab · ignite-hint IIFE",
+        "issue": "The `chamber_missing` branch of the ignite-hint IIFE (App.js lines 427-461) lives INSIDE the `{planDraft && (...)}` wrapper at line 366. When no plan is selected, `planDraft` is null, so the entire strategy form — including the hint — is never rendered, and the user sees the `strategy-empty` placeholder instead. Consequently `data-testid='ignite-hint'` with a `chamber_missing` message and its link `data-testid='ignite-hint-link'` are UNREACHABLE. Recommended fix: either (a) move the IIFE outside the planDraft gate and render it in the right column always, or (b) add `data-testid='ignite-hint'` + `data-testid='ignite-hint-link'` (wrapping the existing '← CHAMBER' button at App.js line 359) on the strategy-empty block so spec and DOM agree.",
+        "selector": "[data-testid='ignite-hint'], [data-testid='ignite-hint-link']",
+        "priority": "HIGH"
+      },
+      {
+        "component": "BootstrapInput (StrategySections.jsx line 82-120)",
+        "issue": "The textarea `onChange` only updates local `raw` state (line 109); `strategy.bootstrapData` is NOT updated until the user clicks the `bootstrap-parse` button (or the `bootstrap-paste` clipboard shortcut). As a result the `ignite-hint` remains stuck on `bootstrap_empty` while the user is typing/pasting data — the `bootstrap_too_few` state is only reached AFTER an explicit Parse click. Consider auto-parsing on blur or on a debounced onChange so the hint reflects input length live (matches the implicit expectation in the acceptance test 'paste 10 numbers ... verify ignite-hint shows bootstrap_too_few').",
+        "selector": "[data-testid='bootstrap-textarea']",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "All tabs · Archive Noir palette",
+        "issues": ["Palette is clean and consistent — no black-on-black panels, no legacy yellow/gold leakage in any rendered page (verified against #EFE547/#FFB800/#FF4500/#C8102E/#7B0F0F/#E8B923 — zero matches in DOM). Body background rgb(11,15,16) with leather/cinnabar accents; text contrast looks acceptable on every tab."]
+      }
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_8.json"],
+  "action_items": [
+    "[HIGH] Fix unreachable ignite-hint 'chamber_missing' branch — move the hint IIFE outside the `{planDraft && ...}` gate OR add data-testid='ignite-hint'/'ignite-hint-link' to the strategy-empty block. Spec explicitly requires these testids when no firm is selected.",
+    "[MEDIUM] BootstrapInput: auto-parse textarea on change (or at least onBlur) so the ignite-hint reflects live character count; currently requires explicit `bootstrap-parse` click for `bootstrap_too_few` state to surface.",
+    "[OPTIONAL] Review CSV modal spec — review_request mentions an 'Apply button' but the implementation exposes only btn-csv-close / btn-csv-sample / btn-csv-clear / csv-file-input / csv-textarea (no explicit apply). Confirm whether Load Sample is the intended apply path or whether a btn-csv-apply testid needs to be added."
+  ],
+  "critical_code_review_comments": [
+    "App.js is still 1,532 lines after the refactor. Consider extracting the ignite/compare-rack right column into its own `<IgniteColumn/>` component — it would also make the chamber_missing hint bug easier to spot and fix.",
+    "StrategySections.jsx BootstrapInput: `raw` is local state; `strategy.bootstrapData` only syncs on explicit parse. Hint logic in App.js reads `strategy.bootstrapData.length`, so there is a built-in delay between 'user typed N chars' and 'hint reflects N'. Either auto-debounce-parse on change or switch the hint to read from `raw` length via parseBootstrapData(raw).",
+    "Glossary section headings render as concatenated 'A' + title with no space (h3 shows 'ASIMULATION METHODS' / 'BDRAWDOWN TYPES'). The `.letter-tag` span is there but the CSS is not adding a gap/margin, resulting in the run-on text. Cosmetic but noticeable."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (client-side SPA)", "frontend": "11/13 checkpoints pass (≈85%)" },
+  "test_credentials": "N/A — client-side SPA, no login",
+  "seed_data_creation": "N/A",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Test recipe: (1) firm-apex_eod → plan-apex_eod_50k → tab-strategy auto-activates. (2) For chamber_missing hint: tab-strategy with no plan shows strategy-empty placeholder (testid strategy-empty); ignite-hint and ignite-hint-link are NOT in DOM — this is the open bug. (3) mode-bootstrap toggles to bootstrap; ignite-hint immediately shows 'bootstrap_empty' text. (4) bootstrap-textarea only updates strategy.bootstrapData when you click bootstrap-parse (or bootstrap-paste). After parse with 10 lines, ignite-hint reads 'need at least 30 values · you have 10'. (5) section testids: section-pnl, section-mae, section-costs, section-behavioral, section-postpass. Collapsibles toggle via section-*-toggle. (6) CSV modal testids: btn-open-csv, csv-modal, btn-csv-close, btn-csv-sample, btn-csv-clear, csv-file-input, csv-textarea — no btn-csv-apply present. (7) Compare Rack: btn-add-compare creates compare-slot-N (0..3); btn-run-all triggers batch sim. (8) Post-pass: expand section-postpass via section-postpass-toggle, then pp-toggle=ON to expose pp-horizon etc. With pp ON, btn-run auto-switches to pane-oracle with funded-lifecycle panel and all 11 pp-* testids. (9) Glossary: 8 sections A-H, new terms WINNING DAYS + CALENDAR VS TRADING DAYS live in section H (ops). gloss-search filters; both new terms have bodies in ES and EN. (10) Lang toggle lang-es/lang-en works but acronym section headings (e.g. 'SIMULATION METHODS') are identical in both locales — only body/subtitle text translates. (11) Zero console errors across full flow.",
+  "rca of the issue": "ROOT CAUSE: App.js lines 345-471 render the Strategy tab body. The ternary at line 355 `{!planDraft && <strategy-empty>}` handles the empty case, and the main form with the ignite-hint IIFE lives inside `{planDraft && (...)}` at line 366. The IIFE at lines 427-461 has a branch `if (!planDraft) reason = 'chamber_missing'` (line 429) that is logically unreachable because the IIFE only executes when planDraft is truthy. REPRODUCTION: fresh load → tab-strategy → DOM query `[data-testid=\"ignite-hint\"]` returns null, `[data-testid=\"ignite-hint-link\"]` returns null, but `[data-testid=\"strategy-empty\"]` is present. MITIGATION: Move the hint IIFE into the top-level Strategy body (outside the planDraft gate) and wrap IGNITE button + hint in a shared container, OR attach `data-testid=\"ignite-hint\"` to the strategy-empty wrapper and `data-testid=\"ignite-hint-link\"` to its '← CHAMBER' button (App.js line 359-361). Second approach is a 2-line change."
+}

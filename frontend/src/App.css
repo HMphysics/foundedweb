@@ -457,6 +457,44 @@ h1.oracle-h1 {
   background: rgba(184, 164, 120, 0.05);
 }
 
+/* Ignite disabled-state hint */
+.ignite-block-hint {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--leather);
+  border-left: 2px solid var(--cinnabar);
+  color: var(--linen);
+  font-family: var(--plex);
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ignite-block-hint .hint-icon {
+  color: var(--cinnabar);
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 14px;
+}
+.ignite-block-hint .hint-link {
+  background: transparent;
+  border: none;
+  color: var(--brass);
+  text-decoration: underline;
+  font-style: italic;
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+  font-family: var(--plex);
+}
+.ignite-block-hint .hint-link:hover {
+  color: var(--bone);
+}
+
+
 /* ═══════════════ Pills / filters ═══════════════ */
 .fg-pill {
   background: transparent;
