@@ -1,0 +1,24 @@
+{
+  "summary": "PASO 4 regression test after App.js refactor (1532 → 256 lines). Full frontend smoke on https://eval-probability.preview.emergentagent.com. RESULT: NO REGRESSIONS. All 12 review items pass. Zero console errors / page errors across every flow. Shell mounts cleanly; all 4 tabs (tab-chamber, tab-strategy, tab-oracle, tab-gloss) render; WelcomeBlock + Header/Footer/HeaderSeal present. CHAMBER: 22 firm cards + 1 custom card visible, filter pills (filter-all/futures/forex/custom) work, selecting firm-apex_eod → plan grid (6 plans) → account-summary → btn-next-strategy all flow correctly. STRATEGY: all 7 collapsibles render (section-pnl, section-mae, section-costs, section-behavioral, section-postpass plus mode-selector and P&L inputs), btn-run + sim-nsims slider both present. ignite-hint regression confirmed in BOTH variants: (a) no-plan → strategy-empty with 'first select a firm…' + working ignite-hint-link that returns to pane-chamber; (b) bootstrap 10 numbers live-parsed → '⚠need at least 30 values · you have 10'. SIMULATION: clicking btn-run jumps to ORACLE; results-dashboard + kpi-ppass + kpi-ev + kpi-pdd + oracle-revelation + chart-dist + chart-pass-hist + chart-fail-hist + stats-row ALL present. FUNDED LIFECYCLE: enabling pp-toggle (role=switch, aria-checked transitions false→true) then running produces funded-lifecycle panel with pp-kpi-net, pp-kpi-lifetime-ev, pp-kpi-payouts, pp-survive-3m/6m/12m, pp-chart-net-hist, pp-chart-count, pp-chart-by-month all rendered. COMPARE: adding 2 plans via btn-add-compare → compare-rack populated → btn-run-all → compare-results table renders with both firms (Topstep 150K 99.71% / Apex 100K 1.98%) and a CHOSEN winner row. GLOSS: 8 glossary sections (A-H) + gloss-search visible. CSV MODAL: btn-open-csv opens modal, btn-csv-sample loads sample, btn-csv-apply (appears after parse) closes modal and populates P&L inputs. LANG TOGGLE: lang-es ↔ lang-en swap ES/EN strings live.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_10.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "testid naming inconsistency between review-request spec and actual code (not a bug, just doc drift): spec lists 'section-mode' but code uses 'mode-selector'; 'custom-card' vs 'firm-custom'; 'btn-csv-open' vs 'btn-open-csv'; 'lifetime-ev' vs 'pp-kpi-lifetime-ev'; 'pp-count' vs 'pp-chart-count'; 'pp-by-month' vs 'pp-chart-by-month'. Consider aligning either the code or the spec for future regressions.",
+    "Minor UX: after btn-run-all in compare-rack, the app does not auto-navigate to tab-oracle (single btn-run does). User must click ORACLE manually to see compare-results. Confirm if by design.",
+    "StrategySections.jsx is 529 lines — approaching the 700-line split threshold; consider splitting the 7 collapsible sections into individual files for maintainability."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A", "frontend": "12/12 review items pass (100%)" },
+  "test_credentials": "N/A — no auth",
+  "seed_data_creation": "N/A",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "App.js refactor (1532→256 lines) is clean. Component tree: layout/{Header,Footer,WelcomeBlock,HeaderSeal}, chamber/{ChamberTab,FirmCard,PlanCard,CustomCard,AccountSummary}, strategy/{StrategyTab,StrategySections}, oracle/{OracleTab,ResultsDashboard,ResultsPanel,FundedLifecyclePanel}, compare/{CompareRack,CompareResults}. Correct firm testids follow pattern firm-<firmId> where firmId comes from firmDatabase.js (e.g. firm-apex_eod, firm-apex_intraday, firm-topstep, firm-custom — NOT firm-apex). postpass toggle testid is 'pp-toggle' (role=switch). CSV modal apply button 'btn-csv-apply' only appears after sample/data is parsed (~1s delay). Compare flow requires manual tab-oracle click to view compare-results after btn-run-all.",
+  "rca of the issue": "N/A — no regressions found"
+}
