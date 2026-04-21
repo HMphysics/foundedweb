@@ -378,6 +378,70 @@ export const TRANSLATIONS = {
     gloss_days_body: "distribución de días que tardas en pasar, cuando pasas. media, mediana, p90.",
     gloss_attempts_name: "ATTEMPT DISTRIBUTION",
     gloss_attempts_body: "cuántos intentos hasta el primer PASS. mediana geométrica.",
+
+    // Strategy v2 — mode toggle
+    mode_title: "MODE",
+    mode_simple: "SIMPLE · gaussian",
+    mode_simple_sub: "distribuciones normales sobre medias y desviaciones. rápido. asume colas gaussianas (no ciertas).",
+    mode_bootstrap: "BOOTSTRAP · empirical",
+    mode_bootstrap_sub: "muestreo aleatorio de tus P&Ls reales. preserva asimetría y colas. requiere ≥ 100 días.",
+
+    // Strategy sections
+    section_pnl_v2: "P&L DISTRIBUTION",
+    section_mae_v2: "INTRADAY RISK · MAE",
+    section_costs: "COSTS & COMMISSIONS",
+    section_behavioral: "BEHAVIORAL MODEL",
+
+    // Bootstrap input
+    bootstrap_help: "pega los P&Ls de tu backtest · un número por línea, o CSV con columnas · acepta: pnl, mae, mfe.",
+    bootstrap_placeholder: "127\n-340\n892\n-45\n-210\n...\n\no bien:\ndate,pnl,mae\n2024-01-02,127,85\n2024-01-03,-340,420",
+    bootstrap_parse: "parse data",
+    bootstrap_paste_clip: "paste from clipboard",
+    bootstrap_summary_title: "DATA SUMMARY",
+    bootstrap_min_warning: "recomendado ≥ 100 · tienes menos muestras. los resultados serán ruidosos.",
+
+    // MAE v2
+    mae_help: "MAE = máxima pérdida unrealized durante el día antes de cerrar.",
+    mae_estimate: "ESTIMATE (from instrument)",
+    mae_manual: "MANUAL (direct values)",
+    mae_auto: "AUTO (from bootstrap MAE column)",
+    mae_auto_ok: "MAE se lee directamente de tus datos bootstrap.",
+    field_instrument: "instrumento",
+    field_mae_win_mean:  "μ MAE win",
+    field_mae_win_std:   "σ MAE win",
+    field_mae_loss_mean: "μ MAE loss",
+    field_mae_loss_std:  "σ MAE loss",
+
+    // Costs v2
+    costs_help: "las comisiones erosionan el P&L neto. aplícalas si tus P&Ls son brutos (antes de fees).",
+    costs_none: "NONE (P&L ya neto)",
+    costs_estimate: "ESTIMATE (per contract × trades/day)",
+    costs_fixed: "FIXED DAILY (cantidad plana)",
+    field_comm_per_rt: "comisión por R/T",
+    field_trades_day:  "trades por día",
+    field_contracts_trade: "contratos por trade",
+    field_daily_commission: "comisión diaria",
+
+    // Behavioral v2
+    behav_post_title: "POST-TARGET BEHAVIOR",
+    behav_conservative: "CONSERVATIVE (realistic)",
+    behav_conservative_sub: "al alcanzar target, si consistency bloquea, reducir tamaño al 30% para diluir sin riesgo.",
+    behav_aggressive: "AGGRESSIVE (maximize speed)",
+    behav_aggressive_sub: "mantiene el tamaño completo hasta pasar. más rápido, más fallos.",
+    behav_mindays_title: "MIN DAYS COUNT",
+    behav_mindays_total: "TOTAL TRADING DAYS",
+    behav_mindays_winning: "WINNING DAYS ONLY (≥ $X)",
+    field_win_day_threshold: "winning-day min $",
+    behav_maxdays_title: "MAX DAYS TYPE",
+    behav_maxdays_trading: "TRADING DAYS (~21/mes)",
+    behav_maxdays_calendar: "CALENDAR DAYS (Apex)",
+
+    // Oracle new
+    chart_attempt_curve: "ATTEMPT CURVE · p(≥1 pass) vs number of attempts",
+    chart_commission_impact: "COMMISSION IMPACT",
+    comm_daily: "daily cost",
+    comm_per_attempt: "per attempt",
+    comm_pct_target: "% of target",
   },
 
   en: {
@@ -737,6 +801,64 @@ export const TRANSLATIONS = {
     gloss_days_body: "distribution of days taken to pass, when you pass. mean, median, p90.",
     gloss_attempts_name: "ATTEMPT DISTRIBUTION",
     gloss_attempts_body: "how many attempts until the first PASS. geometric median.",
+
+    // Strategy v2 — mode toggle
+    mode_title: "MODE",
+    mode_simple: "SIMPLE · gaussian",
+    mode_simple_sub: "normal distributions over means and std devs. fast. assumes gaussian tails (not true).",
+    mode_bootstrap: "BOOTSTRAP · empirical",
+    mode_bootstrap_sub: "random sampling from your real P&Ls. preserves skewness and tails. needs ≥ 100 days.",
+
+    section_pnl_v2: "P&L DISTRIBUTION",
+    section_mae_v2: "INTRADAY RISK · MAE",
+    section_costs: "COSTS & COMMISSIONS",
+    section_behavioral: "BEHAVIORAL MODEL",
+
+    bootstrap_help: "paste your backtest daily P&Ls · one number per line, or CSV with columns · accepts: pnl, mae, mfe.",
+    bootstrap_placeholder: "127\n-340\n892\n-45\n-210\n...\n\nor:\ndate,pnl,mae\n2024-01-02,127,85\n2024-01-03,-340,420",
+    bootstrap_parse: "parse data",
+    bootstrap_paste_clip: "paste from clipboard",
+    bootstrap_summary_title: "DATA SUMMARY",
+    bootstrap_min_warning: "recommend ≥ 100 · you have fewer samples. results will be noisy.",
+
+    mae_help: "MAE = maximum unrealized loss during the day before closing.",
+    mae_estimate: "ESTIMATE (from instrument)",
+    mae_manual: "MANUAL (direct values)",
+    mae_auto: "AUTO (from bootstrap MAE column)",
+    mae_auto_ok: "MAE read directly from your bootstrap data.",
+    field_instrument: "instrument",
+    field_mae_win_mean:  "μ MAE win",
+    field_mae_win_std:   "σ MAE win",
+    field_mae_loss_mean: "μ MAE loss",
+    field_mae_loss_std:  "σ MAE loss",
+
+    costs_help: "commissions erode net P&L. apply them if your P&Ls are gross (pre-fees).",
+    costs_none: "NONE (P&L already net)",
+    costs_estimate: "ESTIMATE (per contract × trades/day)",
+    costs_fixed: "FIXED DAILY (flat amount)",
+    field_comm_per_rt: "commission per R/T",
+    field_trades_day:  "trades per day",
+    field_contracts_trade: "contracts per trade",
+    field_daily_commission: "daily commission",
+
+    behav_post_title: "POST-TARGET BEHAVIOR",
+    behav_conservative: "CONSERVATIVE (realistic)",
+    behav_conservative_sub: "on hitting target, if consistency blocks pass, reduce size to 30% to dilute without risk.",
+    behav_aggressive: "AGGRESSIVE (maximize speed)",
+    behav_aggressive_sub: "keeps full size until pass. faster but more failures.",
+    behav_mindays_title: "MIN DAYS COUNT",
+    behav_mindays_total: "TOTAL TRADING DAYS",
+    behav_mindays_winning: "WINNING DAYS ONLY (≥ $X)",
+    field_win_day_threshold: "winning-day min $",
+    behav_maxdays_title: "MAX DAYS TYPE",
+    behav_maxdays_trading: "TRADING DAYS (~21/month)",
+    behav_maxdays_calendar: "CALENDAR DAYS (Apex)",
+
+    chart_attempt_curve: "ATTEMPT CURVE · p(≥1 pass) vs number of attempts",
+    chart_commission_impact: "COMMISSION IMPACT",
+    comm_daily: "daily cost",
+    comm_per_attempt: "per attempt",
+    comm_pct_target: "% of target",
   },
 };
 

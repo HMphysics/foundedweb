@@ -313,6 +313,12 @@ export const FIRM_DATABASE = [
 ];
 
 export const STRATEGY_DEFAULTS = {
+  // Mode
+  mode:      "simple",        // "simple" | "bootstrap"
+  bootstrapData: [],
+  bootstrapStats: null,
+
+  // Simple mode (gaussian)
   wr:        0.37,
   muWin:     438,
   sigmaWin:  242,
@@ -320,7 +326,30 @@ export const STRATEGY_DEFAULTS = {
   sigmaLoss:  28,
   tailProb:  0.0315,
   tailMult:  1.18,
-  maeWin:    0.24,
+
+  // MAE
+  maeMode:   "estimate",      // "estimate" | "manual" | "auto"
+  instrument: "nq",
+  maeWin:    0.24,            // legacy scale factor (used by ESTIMATE fallback)
   maeLoss:   0.40,
-  nSims:     10000,
+  maeWinMean:  null,
+  maeWinStd:   null,
+  maeLossMean: null,
+  maeLossStd:  null,
+
+  // Costs & commissions
+  commissionMode:    "none",  // "none" | "estimate" | "fixed"
+  commissionPerRT:   4.0,
+  tradesPerDay:      5,
+  contractsPerTrade: 2,
+  dailyCommission:   0,
+
+  // Behavioral
+  postTargetMode:         "conservative",  // "conservative" | "aggressive"
+  postTargetSizeReduction: 0.30,
+  minDaysType:            "total",          // "total" | "winning"
+  winDayThreshold:        50,
+  maxDaysType:            "trading",        // "trading" | "calendar"
+
+  nSims: 10000,
 };
