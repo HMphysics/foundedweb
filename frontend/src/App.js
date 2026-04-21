@@ -5,7 +5,7 @@ import {
   ReferenceLine, Cell,
 } from "recharts";
 import { toPng } from "html-to-image";
-import { FIRM_DATABASE, STRATEGY_DEFAULTS } from "./firmDatabase";
+import { FIRM_DATABASE, STRATEGY_DEFAULTS, resolveFundedRules } from "./firmDatabase";
 import { runMonteCarlo, parseBootstrapData, INSTRUMENT_MAE_RATIOS } from "./monteCarlo";
 import { parseCsv, detectColumns, extractColumn, calibrateStrategy } from "./csvCalibrate";
 import { makeT, detectBrowserLang, TOOLTIPS } from "./i18n";
@@ -354,7 +354,12 @@ function AppInner() {
     setResults(null);
     setActiveTab("oracle");
     setTimeout(() => {
-      try { setResults(runMonteCarlo(planDraft, strategy, nSims)); }
+      try {
+        const fundedRules = strategy.postPassEnabled
+          ? resolveFundedRules(planDraft, selectedFirm?.id, strategy.fundedOverride || {})
+          : null;
+        setResults(runMonteCarlo(planDraft, strategy, nSims, fundedRules));
+      }
       catch (e) { console.error(e); }
       finally { setLoading(false); }
     }, 30);
@@ -379,7 +384,12 @@ function AppInner() {
     setCompareLoading(true);
     setTimeout(() => {
       try {
-        setCompareSlots(compareSlots.map(slot => ({ ...slot, results: runMonteCarlo(slot.plan, strategy, nSims) })));
+        setCompareSlots(compareSlots.map(slot => {
+          const fr = strategy.postPassEnabled
+            ? resolveFundedRules(slot.plan, slot.firmId, strategy.fundedOverride || {})
+            : null;
+          return { ...slot, results: runMonteCarlo(slot.plan, strategy, nSims, fr) };
+        }));
       } catch (e) { console.error(e); }
       finally { setCompareLoading(false); }
     }, 30);
@@ -557,6 +567,8 @@ function AppInner() {
                 <IntradayRiskSection strategy={strategy} setStrategy={setStrategy} />
                 <CostsSection strategy={strategy} setStrategy={setStrategy} />
                 <BehavioralSection strategy={strategy} setStrategy={setStrategy} />
+                <PostPassSection strategy={strategy} setStrategy={setStrategy}
+                                 firmId={selectedFirm?.id} plan={planDraft} />
               </div>
 
               {/* Right column: account + sim + ignite */}
@@ -1056,6 +1068,181 @@ function BehavioralSection({ strategy, setStrategy }) {
   );
 }
 
+// ─────────────────────────── Post-PASS (funded cycle) section ───────────────────────────
+function PostPassSection({ strategy, setStrategy, firmId, plan }) {
+  const { t } = useT();
+  const enabled = !!strategy.postPassEnabled;
+  const horizon = strategy.postPassHorizonMonths ?? 6;
+  const sizeMode = strategy.postPassSizeMode || "same";
+  const sizeFactor = strategy.postPassSizeFactor ?? 0.5;
+  const ov = useMemo(() => strategy.fundedOverride || {}, [strategy.fundedOverride]);
+
+  // Effective resolved rules (firm defaults + override) for display
+  const effective = useMemo(() => {
+    if (!plan) return null;
+    try { return resolveFundedRules(plan, firmId, ov); } catch { return null; }
+  }, [plan, firmId, ov]);
+
+  const setOv = (patch) =>
+    setStrategy({ ...strategy, fundedOverride: { ...(strategy.fundedOverride || {}), ...patch } });
+
+  const resetDefaults = () =>
+    setStrategy({ ...strategy, fundedOverride: {} });
+
+  const Radio = ({ name, options, value, onChange, testPrefix }) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+      {options.map(o => (
+        <label key={o.id} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8 }}
+               data-testid={`${testPrefix}-${o.id}`}>
+          <input type="radio" name={name} checked={value === o.id}
+                 onChange={() => onChange(o.id)}
+                 style={{ accentColor: C.flame, marginTop: 3 }} />
+          <div>
+            <div style={{ fontFamily: "var(--plex)", fontSize: 12.5,
+                          color: value === o.id ? C.flame : C.bone, fontWeight: 500 }}>
+              {o.label}
+            </div>
+            {o.sub && <div style={{ fontFamily: "var(--plex)", fontStyle: "italic",
+                                     color: C.boneDim, fontSize: 11.5, fontWeight: 300, marginTop: 2 }}>
+              {o.sub}
+            </div>}
+          </div>
+        </label>
+      ))}
+    </div>
+  );
+
+  return (
+    <Collapsible title={t("section_postpass")} testId="section-postpass"
+                 badge={enabled ? "ON" : "OFF"} badgeColor={enabled ? C.ember : C.borderHot}>
+      {/* Toggle */}
+      <ToggleRow label={t("postpass_toggle")} on={enabled}
+                 onToggle={(v) => setStrategy({ ...strategy, postPassEnabled: v })}
+                 testId="pp-toggle">
+        <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
+                      fontSize: 11.5, marginTop: 4 }}>
+          › {t("postpass_toggle_hint")}
+        </div>
+      </ToggleRow>
+
+      {enabled && (
+        <>
+          <div style={{ borderTop: `1px dotted ${C.borderHot}`, margin: "12px 0" }} />
+
+          {/* Horizon slider */}
+          <div style={{ marginBottom: 12 }}>
+            <div className="fg-label" style={{ marginBottom: 6 }}>
+              {t("postpass_horizon")} · <span style={{ color: C.ember }}>{horizon}m</span>
+            </div>
+            <input type="range" min={1} max={24} step={1} value={horizon}
+                   onChange={(e) => setStrategy({ ...strategy, postPassHorizonMonths: parseInt(e.target.value, 10) })}
+                   data-testid="pp-horizon"
+                   style={{ width: "100%", accentColor: C.ember }} />
+            <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
+                          fontSize: 11, marginTop: 3 }}>
+              › {t("postpass_horizon_hint")} ({horizon * 21} trading days)
+            </div>
+          </div>
+
+          <div style={{ borderTop: `1px dotted ${C.borderHot}`, margin: "12px 0" }} />
+
+          {/* Size mode */}
+          <div className="fg-label" style={{ marginBottom: 8 }}>{t("postpass_size_title")}</div>
+          <Radio name="pp-size" testPrefix="pp-size"
+                 value={sizeMode}
+                 onChange={v => setStrategy({ ...strategy, postPassSizeMode: v })}
+                 options={[
+                   { id: "same",    label: t("postpass_size_same"),    sub: t("postpass_size_same_sub") },
+                   { id: "reduced", label: t("postpass_size_reduced"), sub: t("postpass_size_reduced_sub") },
+                 ]} />
+          {sizeMode === "reduced" && (
+            <div style={{ marginBottom: 12 }}>
+              <div className="fg-label" style={{ marginBottom: 6 }}>
+                {t("postpass_size_factor")} · <span style={{ color: C.ember }}>{Math.round(sizeFactor * 100)}%</span>
+              </div>
+              <input type="range" min={0.05} max={1.0} step={0.05} value={sizeFactor}
+                     onChange={(e) => setStrategy({ ...strategy, postPassSizeFactor: parseFloat(e.target.value) })}
+                     data-testid="pp-size-factor"
+                     style={{ width: "100%", accentColor: C.ember }} />
+            </div>
+          )}
+
+          <div style={{ borderTop: `1px dotted ${C.borderHot}`, margin: "12px 0" }} />
+
+          {/* Rules overrides */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+                        marginBottom: 8 }}>
+            <div className="fg-label">{t("postpass_rules_title")}</div>
+            <button className="fg-btn-ghost" onClick={resetDefaults} data-testid="pp-reset"
+                    style={{ fontSize: 10.5, padding: "3px 8px" }}>
+              ⟳ {t("postpass_reset")}
+            </button>
+          </div>
+          <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.boneDim,
+                        fontSize: 11.5, marginBottom: 10 }}>
+            › {t("postpass_rules_hint")}
+          </div>
+
+          {effective && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 14px" }}>
+              <NumField label={t("pp_firstPayoutMinDays")} value={ov.firstPayoutMinDays ?? effective.firstPayoutMinDays}
+                        onChange={v => setOv({ firstPayoutMinDays: v })} testId="pp-firstdays" width={90} />
+              <NumField label={t("pp_payoutFrequency")}    value={ov.payoutFrequency    ?? effective.payoutFrequency}
+                        onChange={v => setOv({ payoutFrequency: v })}    testId="pp-freq" width={90} />
+              <NumField label={t("pp_payoutBuffer")}  prefix="$" value={ov.payoutBuffer ?? effective.payoutBuffer}
+                        onChange={v => setOv({ payoutBuffer: v })} testId="pp-buffer" width={90} />
+              <NumField label={t("pp_payoutMinAmount")} prefix="$" value={ov.payoutMinAmount ?? effective.payoutMinAmount}
+                        onChange={v => setOv({ payoutMinAmount: v })} testId="pp-min" width={90} />
+              <NumField label={t("pp_payoutMaxPct")}  step={0.05} value={ov.payoutMaxPct ?? effective.payoutMaxPct}
+                        onChange={v => setOv({ payoutMaxPct: v })} testId="pp-maxpct" width={90} />
+              <NumField label={t("pp_payoutMaxCap")}  prefix="$" value={ov.payoutMaxCap ?? effective.payoutMaxCap ?? null}
+                        onChange={v => setOv({ payoutMaxCap: v })} testId="pp-cap" width={90} />
+              <NumField label={t("pp_safetyNet")}     prefix="$" value={ov.safetyNet ?? effective.safetyNet}
+                        onChange={v => setOv({ safetyNet: v })} testId="pp-safety" width={90} />
+              <NumField label={t("pp_payoutConsistency")} step={0.05}
+                        value={ov.payoutConsistency ?? effective.payoutConsistency ?? null}
+                        onChange={v => setOv({ payoutConsistency: v })} testId="pp-cons" width={90} />
+              <SelectField label={t("pp_payoutConsistencyType")}
+                           value={ov.payoutConsistencyType ?? effective.payoutConsistencyType ?? ""}
+                           onChange={v => setOv({ payoutConsistencyType: v })} testId="pp-cons-type"
+                           options={[{ value: "", label: "—" }, { value: "vs_total", label: "vs_total" }]} />
+              <SelectField label={t("pp_ddTypeOverride")}
+                           value={ov.ddTypeOverride ?? effective.ddType}
+                           onChange={v => setOv({ ddTypeOverride: v })} testId="pp-ddtype"
+                           options={[
+                             { value: "static",             label: "static" },
+                             { value: "trailing_eod",       label: "trailing_eod" },
+                             { value: "trailing_intraday",  label: "trailing_intraday" },
+                           ]} />
+              <NumField label={t("pp_ddValueOverride")} prefix="$" value={ov.ddValueOverride ?? effective.ddValue}
+                        onChange={v => setOv({ ddValueOverride: v })} testId="pp-ddvalue" width={90} />
+              <SelectField label={t("pp_floorLockOverride")}
+                           value={ov.floorLockOverride ?? effective.floorLock ?? "none"}
+                           onChange={v => setOv({ floorLockOverride: v })} testId="pp-floorlock"
+                           options={[
+                             { value: "none",                 label: "none" },
+                             { value: "at_capital",           label: "at_capital" },
+                             { value: "at_target_level",      label: "at_target_level" },
+                             { value: "at_capital_plus_100",  label: "at_capital_plus_100" },
+                           ]} />
+              <NumField label={t("pp_dailyLossOverride")} prefix="$" value={ov.dailyLossOverride ?? effective.dailyLoss ?? null}
+                        onChange={v => setOv({ dailyLossOverride: v })} testId="pp-dll" width={90} />
+              <ToggleRow label={t("pp_resetOnPayout")}
+                         on={ov.resetOnPayout ?? effective.resetOnPayout}
+                         onToggle={v => setOv({ resetOnPayout: v })}
+                         testId="pp-reset-balance" />
+              <ToggleRow label={t("pp_resetFloorOnPayout")}
+                         on={ov.resetFloorOnPayout ?? effective.resetFloorOnPayout}
+                         onToggle={v => setOv({ resetFloorOnPayout: v })}
+                         testId="pp-reset-floor" />
+            </div>
+          )}
+        </>
+      )}
+    </Collapsible>
+  );
+}
+
 // ─────────────────────────── Compact header ───────────────────────────
 function Header() {
   const { lang, t, setLang } = useT();
@@ -1123,6 +1310,9 @@ function Glossary() {
     { section: "lifecycle", name: t("gloss_funded_name"),     body: t("gloss_funded_body") },
     { section: "lifecycle", name: t("gloss_payout_name"),     body: t("gloss_payout_body") },
     { section: "lifecycle", name: t("gloss_takehome_name"),   body: t("gloss_takehome_body") },
+    { section: "lifecycle", name: t("gloss_postpass_name"),   body: t("gloss_postpass_body") },
+    { section: "lifecycle", name: t("gloss_safetynet_name"),  body: t("gloss_safetynet_body") },
+    { section: "lifecycle", name: t("gloss_consistency_postpass_name"), body: t("gloss_consistency_postpass_body") },
     { section: "ops", name: t("gloss_commissions_name"),      body: t("gloss_commissions_body") },
     { section: "ops", name: t("gloss_behavioral_name"),       body: t("gloss_behavioral_body") },
     { section: "ops", name: t("gloss_autocorr_name"),         body: t("gloss_autocorr_body") },
@@ -1923,6 +2113,9 @@ function ResultsDashboard({ results, plan }) {
         </>
       )}
 
+      {/* Funded lifecycle (post-PASS) */}
+      {r.postPass && <FundedLifecyclePanel pp={r.postPass} pPass={r.pPass} avgCost={r.avgCost} />}
+
       {/* Ledger */}
       <div className="oracle-strip-title" style={{ marginTop: 28 }}>{t("ledger_chapter_title")}</div>
       <div className="oracle-ledger" data-testid="stats-row">
@@ -1953,6 +2146,157 @@ function ChartTitle({ title, caption }) {
     <div style={{ marginBottom: 8 }}>
       <div style={{ color: C.bone, fontSize: 11, fontWeight: 700, letterSpacing: 0.25, textTransform: "uppercase" }}>{title}</div>
       {caption && <div style={{ color: C.ash, fontSize: 10, marginTop: 3, letterSpacing: 0.08 }}>› {caption}</div>}
+    </div>
+  );
+}
+
+// ─────────────────── Funded Lifecycle Panel (post-PASS) ───────────────────
+function FundedLifecyclePanel({ pp, pPass, avgCost }) {
+  const { t } = useT();
+  const netColor = pp.meanNet >= 0 ? C.bone : C.flame;
+  const evColor  = pp.evLifetime >= 0 ? C.bone : C.flame;
+
+  return (
+    <div style={{ marginTop: 32 }} data-testid="funded-lifecycle">
+      <div className="oracle-strip-title">{t("oracle_funded_title")}</div>
+      <div style={{ color: C.ash, fontSize: 10.5, marginBottom: 10, letterSpacing: 0.08,
+                    fontFamily: "var(--mono)" }}>
+        › {t("oracle_funded_hint")} · {pp.ppRuns.toLocaleString("en-US")} PASS runs · horizon {pp.horizonMonths}m ({pp.horizonDays}d)
+      </div>
+
+      {/* Hero row */}
+      <div className="oracle-hero-kpis" style={{ marginBottom: 18 }}>
+        <div className="oracle-ppass passing" data-testid="pp-kpi-net">
+          <div className="lbl">{t("kpi_pp_expected_net")}</div>
+          <div className="big" style={{ color: netColor }}>
+            {(pp.meanNet >= 0 ? "+" : "-") + fmtMoney(Math.abs(pp.meanNet))}
+          </div>
+          <div className="rule" />
+          <div className="sub">{t("kpi_pp_expected_net_sub", { h: pp.horizonMonths })}</div>
+        </div>
+        <div className="oracle-secondary" data-testid="pp-kpi-lifetime-ev">
+          <div className="lbl">{t("kpi_pp_lifetime_ev")}</div>
+          <div className="val" style={{ color: evColor }}>
+            {(pp.evLifetime >= 0 ? "+" : "-") + fmtMoney(Math.abs(pp.evLifetime))}
+          </div>
+          <div className="sub">{t("kpi_pp_lifetime_ev_sub")}</div>
+        </div>
+        <div className="oracle-secondary" data-testid="pp-kpi-payouts">
+          <div className="lbl">{t("kpi_pp_payouts")}</div>
+          <div className="val" style={{ color: C.brass }}>
+            {pp.meanPayouts.toFixed(2)}
+          </div>
+          <div className="sub">{t("kpi_pp_payouts_sub")} · med {pp.medianPayouts}</div>
+        </div>
+      </div>
+
+      {/* Strip row */}
+      <div className="oracle-strip">
+        <div data-testid="pp-survive-3m">
+          <span className="lbl">{t("kpi_pp_survive3")}</span>
+          <span className="val">{fmtPct(pp.pSurvive3m)}</span>
+          <span className="sub">3 months · {Math.round(pp.meanDaysSurvived)}d mean survival</span>
+        </div>
+        <div data-testid="pp-survive-6m">
+          <span className="lbl">{t("kpi_pp_survive6")}</span>
+          <span className="val">{fmtPct(pp.pSurvive6m)}</span>
+          <span className="sub">6 months</span>
+        </div>
+        <div data-testid="pp-survive-12m">
+          <span className="lbl">{t("kpi_pp_survive12")}</span>
+          <span className="val">{fmtPct(pp.pSurvive12m)}</span>
+          <span className="sub">12 months</span>
+        </div>
+        <div data-testid="pp-kpi-first">
+          <span className="lbl">{t("kpi_pp_first_payout")}</span>
+          <span className="val" style={{ color: C.brass }}>
+            {pp.medFirstPayoutDay ? `${Math.round(pp.medFirstPayoutDay)}d` : "—"}
+          </span>
+          <span className="sub">{t("kpi_pp_first_payout_sub")}</span>
+        </div>
+      </div>
+
+      {/* Breach breakdown */}
+      <div className="oracle-strip" style={{ marginTop: 10 }} data-testid="pp-breach-strip">
+        <div>
+          <span className="lbl">{t("kpi_pp_no_breach")}</span>
+          <span className="val" style={{ color: C.bone }}>{fmtPct(pp.breachPct.None)}</span>
+          <span className="sub">reached horizon</span>
+        </div>
+        <div>
+          <span className="lbl">{t("kpi_pp_breach_dd")}</span>
+          <span className="val" style={{ color: C.flame }}>{fmtPct(pp.breachPct.DD)}</span>
+          <span className="sub">drawdown</span>
+        </div>
+        <div>
+          <span className="lbl">{t("kpi_pp_breach_dll")}</span>
+          <span className="val" style={{ color: C.bloodDark }}>{fmtPct(pp.breachPct.DLL)}</span>
+          <span className="sub">daily loss</span>
+        </div>
+        <div>
+          <span className="lbl">{t("kpi_pp_p10p90")}</span>
+          <span className="val">
+            {fmtMoney(pp.p10Net)}<span style={{ color: C.ash }}> / </span>{fmtMoney(pp.p90Net)}
+          </span>
+          <span className="sub">10th / 90th percentile</span>
+        </div>
+      </div>
+
+      {/* Charts */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                    gap: 14, marginTop: 18 }}>
+        <div className="fg-panel" style={{ padding: 16 }} data-testid="pp-chart-net-hist">
+          <ChartTitle title={t("chart_pp_payout_hist")}
+                      caption={`median ${fmtMoney(pp.medianNet)} · mean ${fmtMoney(pp.meanNet)}`} />
+          {pp.histNet.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={pp.histNet} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
+                <XAxis dataKey="bucket" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }}
+                       tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} unit="%" />
+                <Tooltip content={<CTooltip />} cursor={{ fill: `${C.brass}15` }}
+                         formatter={(v) => [`${v}%`, "share"]}
+                         labelFormatter={(l) => `≥ ${fmtMoney(l)}`} />
+                <Bar dataKey="pct" fill={C.brass} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : <EmptyChart />}
+        </div>
+
+        <div className="fg-panel" style={{ padding: 16 }} data-testid="pp-chart-count">
+          <ChartTitle title={t("chart_pp_payout_count")}
+                      caption={`mean ${pp.meanPayouts.toFixed(2)} payouts`} />
+          {pp.payoutHistogram.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={pp.payoutHistogram} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
+                <XAxis dataKey="count" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }}
+                       label={{ value: "payouts", position: "insideBottom", offset: -2, fill: C.ash, fontSize: 10 }} />
+                <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }} unit="%" />
+                <Tooltip content={<CTooltip />} cursor={{ fill: `${C.brass}15` }} />
+                <Bar dataKey="pct" fill={C.bone} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : <EmptyChart />}
+        </div>
+
+        <div className="fg-panel" style={{ padding: 16 }} data-testid="pp-chart-by-month">
+          <ChartTitle title={t("chart_pp_by_month")}
+                      caption={`total expected net (across PASS runs)`} />
+          {pp.payoutsByMonth.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={pp.payoutsByMonth} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
+                <XAxis dataKey="month" stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }}
+                       label={{ value: "month", position: "insideBottom", offset: -2, fill: C.ash, fontSize: 10 }} />
+                <YAxis stroke={C.ash} tickLine={false} axisLine={{ stroke: C.border }}
+                       tickFormatter={(v) => `$${(v / 1000).toFixed(1)}k`} />
+                <Tooltip content={<CTooltip />} cursor={{ fill: `${C.brass}15` }}
+                         formatter={(v) => [fmtMoney(v), "mean net"]} />
+                <Bar dataKey="meanNet" fill={C.ember} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : <EmptyChart />}
+        </div>
+      </div>
     </div>
   );
 }

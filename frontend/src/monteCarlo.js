@@ -241,11 +241,163 @@ function makeHistogram(data, bins = 28) {
     .map(([day, cnt]) => ({ day, pct: +((cnt / clipped.length) * 100).toFixed(2) }));
 }
 
-// ─── Public entry point ─────────────────────────────────────────────────────
-export function runMonteCarlo(account, strategy, nSims) {
+// ─── Funded phase simulation ───────────────────────────────────────────────
+// Returns: { days, breach, payouts: [{day, gross, net}], payoutCount, totalGross, totalNet, finalEquity }
+function simulateFundedPhase(plan, strategy, fundedRules, horizonDays, sizeFactorFunded) {
+  const capital = plan.capital;
+  const ddType  = fundedRules.ddType;
+  const ddValue = fundedRules.ddValue;
+  const dailyLoss = fundedRules.dailyLoss;
+  const dailyLossIsFatal = fundedRules.dailyLossIsFatal;
+  const floorLockType = fundedRules.floorLock;
+  const split = plan.profitSplit;
+
+  let equity = capital;
+  let hwm    = capital;
+  let floor  = capital - ddValue;
+  let floorLocked = false;
+  let daysSinceLastPayout = 0;
+  let dayIdx = 0;
+  let bestDaySincePayout = 0;
+  let profitSincePayout = 0;
+  const payouts = [];
+
+  // Synthetic "account" shape for floor recomputation helpers
+  const acct = { ddType, ddValue, floorLock: floorLockType, target: 0 };
+
+  while (dayIdx < horizonDays) {
+    dayIdx++;
+    daysSinceLastPayout++;
+
+    const { pnl: pnlRaw, mae } = genDay(strategy, sizeFactorFunded);
+    let pnl = pnlRaw;
+
+    // Intraday trailing: MFE raises floor mid-day
+    if (ddType === "trailing_intraday" && pnl > 0 && !floorLocked) {
+      const mfe = pnl + gammaRandom(1.5, Math.max(strategy.sigmaWin * 0.15, 1));
+      const peakEquity = equity + mfe;
+      if (peakEquity > hwm) {
+        hwm = peakEquity;
+        const nf = computeFloor(acct, hwm, equity, capital);
+        floor = Math.max(floor, nf);
+      }
+    }
+
+    // Intraday MAE breach
+    if (equity - mae <= floor) {
+      return { days: dayIdx, breach: "DD", payouts, payoutCount: payouts.length,
+               totalGross: sum(payouts.map(p => p.gross)),
+               totalNet:   sum(payouts.map(p => p.net)),
+               finalEquity: equity };
+    }
+
+    // Daily loss
+    if (dailyLoss && pnl <= -dailyLoss) {
+      if (dailyLossIsFatal) {
+        return { days: dayIdx, breach: "DLL", payouts, payoutCount: payouts.length,
+                 totalGross: sum(payouts.map(p => p.gross)),
+                 totalNet:   sum(payouts.map(p => p.net)),
+                 finalEquity: equity };
+      }
+      pnl = -dailyLoss;
+    }
+
+    equity += pnl;
+    if (equity <= floor) {
+      return { days: dayIdx, breach: "DD", payouts, payoutCount: payouts.length,
+               totalGross: sum(payouts.map(p => p.gross)),
+               totalNet:   sum(payouts.map(p => p.net)),
+               finalEquity: equity };
+    }
+
+    if (ddType !== "static" && !floorLocked) {
+      if (equity > hwm) hwm = equity;
+      if (floorLockType === "at_capital_plus_100" && equity >= capital + ddValue + 100) {
+        floorLocked = true;
+        floor = capital + 100;
+      } else {
+        const nf = computeFloor(acct, hwm, equity, capital);
+        floor = Math.max(floor, nf);
+      }
+    }
+
+    if (pnl > 0) {
+      profitSincePayout += pnl;
+      if (pnl > bestDaySincePayout) bestDaySincePayout = pnl;
+    }
+
+    // ─── Payout eligibility check ───
+    const minDaysMet = payouts.length === 0
+      ? daysSinceLastPayout >= (fundedRules.firstPayoutMinDays || 0)
+      : daysSinceLastPayout >= (fundedRules.payoutFrequency   || 0);
+
+    if (!minDaysMet) continue;
+
+    const profitAboveBase   = equity - capital;
+    const profitAboveBuffer = profitAboveBase - (fundedRules.payoutBuffer || 0);
+    if (profitAboveBuffer < (fundedRules.payoutMinAmount || 0)) continue;
+
+    // Payout consistency (if configured)
+    if (fundedRules.payoutConsistency && fundedRules.payoutConsistencyType === "vs_total") {
+      if (profitSincePayout > 0 &&
+          bestDaySincePayout > fundedRules.payoutConsistency * profitSincePayout) {
+        continue; // cannot withdraw yet — consistency blocks
+      }
+    }
+
+    // Compute payout amount
+    let gross = profitAboveBuffer * (fundedRules.payoutMaxPct ?? 1.0);
+    if (fundedRules.payoutMaxCap && gross > fundedRules.payoutMaxCap) gross = fundedRules.payoutMaxCap;
+    if (gross < (fundedRules.payoutMinAmount || 0)) continue;
+
+    const net = gross * split;
+    payouts.push({ day: dayIdx, gross, net });
+
+    // Post-payout balance / floor behavior
+    if (fundedRules.resetOnPayout) {
+      equity -= gross;
+      if (fundedRules.resetFloorOnPayout !== false) {
+        hwm = capital;
+        floor = capital - ddValue;
+        floorLocked = false;
+      }
+    } else {
+      equity -= gross;
+      // Most non-resetting firms keep trailing floor tied to hwm; do not lower hwm
+    }
+    daysSinceLastPayout = 0;
+    bestDaySincePayout  = 0;
+    profitSincePayout   = 0;
+  }
+
+  return { days: dayIdx, breach: null, payouts, payoutCount: payouts.length,
+           totalGross: sum(payouts.map(p => p.gross)),
+           totalNet:   sum(payouts.map(p => p.net)),
+           finalEquity: equity };
+}
+function sum(a) { return a.reduce((x, y) => x + y, 0); }
+
+export function runMonteCarlo(account, strategy, nSims, fundedRules) {
   const N = Math.min(nSims, 25000);
   const diasPass = [], diasFail = [];
   let nPass = 0, nDD = 0, nTimeout = 0, nDLL = 0;
+
+  // Post-PASS aggregators
+  const postPassEnabled = !!strategy.postPassEnabled && !!fundedRules;
+  const horizonMonths   = Math.max(1, Math.min(24, strategy.postPassHorizonMonths || 6));
+  const horizonDays     = Math.round(horizonMonths * 21);
+  const postSizeFactor  = strategy.postPassSizeMode === "reduced"
+    ? Math.max(0.01, Math.min(1, strategy.postPassSizeFactor ?? 0.5))
+    : 1.0;
+  const ppNetAll = [];
+  const ppGrossAll = [];
+  const ppPayoutsAll = [];
+  const ppDaysSurvived = [];
+  const ppFirstPayoutDay = [];
+  const ppBreachCount = { DD: 0, DLL: 0, None: 0 };
+  const ppSurvive3m = []; const ppSurvive6m = []; const ppSurvive12m = [];
+  const ppPayoutsByMonth = Array.from({ length: horizonMonths }, () => 0); // mean net payout per month
+  let   ppRuns = 0;
 
   // Derive daily commission from mode + params
   const resolved = { ...strategy };
@@ -285,6 +437,29 @@ export function runMonteCarlo(account, strategy, nSims) {
     else if (r.result === "TIMEOUT") { nTimeout++; diasFail.push(r.dias); }
     else if (r.result === "DLL")     { nDLL++;     diasFail.push(r.dias); }
     else                             { nDD++;      diasFail.push(r.dias); }
+
+    // ── Post-PASS funded cycle ──
+    if (postPassEnabled && r.result === "PASS") {
+      const fr = simulateFundedPhase(account, resolved, fundedRules, horizonDays, postSizeFactor);
+      ppRuns++;
+      ppNetAll.push(fr.totalNet);
+      ppGrossAll.push(fr.totalGross);
+      ppPayoutsAll.push(fr.payoutCount);
+      ppDaysSurvived.push(fr.days);
+      ppFirstPayoutDay.push(fr.payouts.length ? fr.payouts[0].day : null);
+      if (fr.breach === "DD")       ppBreachCount.DD++;
+      else if (fr.breach === "DLL") ppBreachCount.DLL++;
+      else                          ppBreachCount.None++;
+
+      ppSurvive3m.push(fr.days >= Math.min(horizonDays,  63) && !fr.breach ? 1 : (fr.days >=  63 ? 1 : 0));
+      ppSurvive6m.push(fr.days >= Math.min(horizonDays, 126) && !fr.breach ? 1 : (fr.days >= 126 ? 1 : 0));
+      ppSurvive12m.push(fr.days >= Math.min(horizonDays,252) && !fr.breach ? 1 : (fr.days >= 252 ? 1 : 0));
+
+      for (const p of fr.payouts) {
+        const m = Math.min(horizonMonths - 1, Math.floor((p.day - 1) / 21));
+        if (m >= 0 && m < horizonMonths) ppPayoutsByMonth[m] += p.net;
+      }
+    }
   }
 
   const pPass    = nPass / N;
@@ -334,6 +509,67 @@ export function runMonteCarlo(account, strategy, nSims) {
     avgDays,
   };
 
+  // ─── Post-PASS (funded) aggregates ───
+  let postPass = null;
+  if (postPassEnabled && ppRuns > 0) {
+    const sortedNet = [...ppNetAll].sort((a, b) => a - b);
+    const sortedGross = [...ppGrossAll].sort((a, b) => a - b);
+    const sortedFirst = ppFirstPayoutDay.filter(d => d !== null).sort((a, b) => a - b);
+    const sortedPayouts = [...ppPayoutsAll].sort((a, b) => a - b);
+
+    // Conditional: among PASSers
+    const pSurvive3m  = ppSurvive3m.length  ? mean(ppSurvive3m)  : 0;
+    const pSurvive6m  = ppSurvive6m.length  ? mean(ppSurvive6m)  : 0;
+    const pSurvive12m = ppSurvive12m.length ? mean(ppSurvive12m) : 0;
+
+    const meanNet     = mean(ppNetAll);
+    const meanGross   = mean(ppGrossAll);
+    const meanPayouts = mean(ppPayoutsAll);
+    const medianNet   = quantile(sortedNet, 0.5);
+    const p10Net      = quantile(sortedNet, 0.10);
+    const p90Net      = quantile(sortedNet, 0.90);
+    const meanFirstPayoutDay = sortedFirst.length ? mean(sortedFirst) : null;
+    const medFirstPayoutDay  = sortedFirst.length ? quantile(sortedFirst, 0.5) : null;
+
+    // Net histogram (for distribution panel)
+    const histNet = makeNetHistogram(ppNetAll);
+    const payoutHistogram = makePayoutCountHistogram(ppPayoutsAll);
+
+    // Unconditional expected take-home (weighted by P(PASS) so we can factor cost/ROI end-to-end)
+    const evLifetime = pPass * meanNet - avgCost;
+
+    // Breach breakdown (normalize to ppRuns)
+    const breachPct = {
+      DD:   ppBreachCount.DD   / ppRuns,
+      DLL:  ppBreachCount.DLL  / ppRuns,
+      None: ppBreachCount.None / ppRuns,
+    };
+
+    // Mean net payout per month (averaged across PASS runs)
+    const payoutsByMonth = ppPayoutsByMonth.map((total, i) => ({
+      month: i + 1,
+      meanNet: +(total / ppRuns).toFixed(2),
+    }));
+
+    postPass = {
+      ppRuns,
+      horizonDays, horizonMonths,
+      sizeFactor: postSizeFactor,
+      pSurvive3m, pSurvive6m, pSurvive12m,
+      meanNet, medianNet, p10Net, p90Net,
+      meanGross,
+      meanPayouts,
+      medianPayouts: quantile(sortedPayouts, 0.5),
+      meanFirstPayoutDay, medFirstPayoutDay,
+      evLifetime,
+      breachPct,
+      histNet,
+      payoutHistogram,
+      payoutsByMonth,
+      meanDaysSurvived: mean(ppDaysSurvived),
+    };
+  }
+
   return {
     pPass, pDD, pTimeout, pDLL, ruinaMin,
     meanPass: mean(diasPass), medianPass: quantile(sortedPass, 0.5), p90Pass: quantile(sortedPass, 0.9),
@@ -345,10 +581,38 @@ export function runMonteCarlo(account, strategy, nSims) {
     histFail: makeHistogram(diasFail),
     attemptCurve,
     commissionImpact,
+    postPass,
     mode: strategy.mode || "simple",
     nPass, nDD, nTimeout, nDLL,
     nSims: N,
   };
+}
+
+// Net-payout histogram (clipped at 95th percentile)
+function makeNetHistogram(data, bins = 24) {
+  if (!data.length) return [];
+  const sorted = [...data].sort((a, b) => a - b);
+  const p95v = quantile(sorted, 0.95);
+  const p05v = quantile(sorted, 0.05);
+  if (p95v === p05v) return [];
+  const range = p95v - p05v;
+  const bSz = Math.max(1, Math.ceil(range / bins));
+  const clipped = data.filter(d => d >= p05v && d <= p95v);
+  const map = new Map();
+  clipped.forEach(d => {
+    const b = Math.floor(d / bSz) * bSz;
+    map.set(b, (map.get(b) || 0) + 1);
+  });
+  return [...map.entries()].sort((a, b) => a[0] - b[0])
+    .map(([bucket, cnt]) => ({ bucket, pct: +((cnt / clipped.length) * 100).toFixed(2) }));
+}
+
+function makePayoutCountHistogram(data) {
+  if (!data.length) return [];
+  const map = new Map();
+  data.forEach(v => map.set(v, (map.get(v) || 0) + 1));
+  return [...map.entries()].sort((a, b) => a[0] - b[0])
+    .map(([count, freq]) => ({ count, pct: +((freq / data.length) * 100).toFixed(2) }));
 }
 
 // ─── Bootstrap data parser ─────────────────────────────────────────────────

@@ -1,0 +1,51 @@
+{
+  "summary": "Frontend-only E2E verification of the NEW 'Ciclo post-PASS' (funded cycle + payouts) feature on https://eval-probability.preview.emergentagent.com. All 14 checkpoints of the review_request pass. STRATEGY tab renders all 5 collapsibles (section-pnl, section-mae, section-costs, section-behavioral, section-postpass). POST-PASS section shows toggle 'pp-toggle' (default OFF), and once enabled reveals pp-horizon (1..24 slider, label updates with value), pp-size-same / pp-size-reduced (reduced reveals pp-size-factor), pp-reset, and all 15 override inputs: pp-firstdays, pp-freq, pp-buffer, pp-min, pp-maxpct, pp-cap, pp-safety, pp-cons, pp-cons-type, pp-ddtype, pp-ddvalue, pp-floorlock, pp-dll, pp-reset-balance, pp-reset-floor. Override inputs pre-fill with firm defaults (Apex EOD: firstdays=8, freq=8, buffer=100, safety=0, dll=750, ddtype=trailing_eod, floorlock=at_target_level). Changing pp-firstdays then clicking pp-reset restores defaults. Changing firm to FTMO updates defaults (firstdays=14, freq=14, buffer=0, dll=500, ddtype=static, floorlock=none). Running IGNITE with post-pass ENABLED at horizon=3 auto-switches to ORACLE and renders a 'funded-lifecycle' panel with ALL 11 required testids (pp-kpi-net, pp-kpi-lifetime-ev, pp-kpi-payouts, pp-survive-3m, pp-survive-6m, pp-survive-12m, pp-kpi-first, pp-breach-strip, pp-chart-net-hist, pp-chart-count, pp-chart-by-month). Running with post-pass DISABLED keeps the original ORACLE dashboard (kpi-ppass visible) with no funded-lifecycle panel. Glossary (GLOSS tab) in ES shows 'CICLO POST-PASS', 'SAFETY NET', 'CONSISTENCY POST-PASS' under section G · FUNDED LIFECYCLE; EN shows 'POST-PASS CYCLE', 'SAFETY NET', 'POST-PASS CONSISTENCY'. Zero JS console errors throughout the flow. Language toggle ES↔EN via lang-es/lang-en testids changes glossary bodies and other labels.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ORACLE · funded-lifecycle (Apex EOD, default custom strategy, horizon=3m)", "issues": ["With Apex EOD trailing DD and the default custom strategy (WR=0.37, muLoss=-$194), the funded phase reports P(SURVIVE 3M)=0% and DD BREACH=100%. Numerically the engine is producing valid finite results (EXPECTED NET +$578, MEAN PAYOUTS 0.82, TIME TO 1st PAYOUT 8d, LIFETIME EV +$16) so this is not an engine fault — it is driven by the trailing drawdown + strategy defaults. Worth sanity-checking against a realistic strategy (higher WR / lower tail) that P(survive) lands in a plausible range and the NET/payout-count histograms show multi-mode spread rather than collapsing to a single bin."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_7.json"],
+  "action_items": [
+    "(Optional) With default custom strategy on Apex EOD, post-pass horizon=3 gives P(survive 3M)=0% / DD-breach=100%. Not a bug, but E1 may want to verify with a realistic funded-trader strategy that outcomes look plausible and that the NET histogram/by-month chart render multi-bucket results."
+  ],
+  "critical_code_review_comments": [
+    "App.js is now 2,639 lines (up from 2,285 in v3 step-2). Carrying forward the long-standing recommendation: split into /components/Strategy/ (ModeSelector, PnLDistribution, IntradayRisk, Costs, Behavioral, PostPass) and /components/Oracle/ (Dashboard, AttemptCurve, CommissionImpact, FundedLifecyclePanel). Each of these is now a self-contained block with its own testids and props — low-risk to extract.",
+    "monteCarlo.js grew from 447 → 711 lines with simulateFundedPhase + post-pass aggregation. Consider splitting into engine/ (simulateSinglePhase, simulateFundedPhase) + aggregation/ (postPassStats, attemptCurve, commissionImpact) for easier unit testing.",
+    "firmDatabase.js — FUNDED_DEFAULTS and FUNDED_OVERRIDES_BY_FIRM live at the top and resolveFundedRules does a 3-way merge (defaults ← firmOverrides ← userOverrides). Logic is clean but there is no validator: an out-of-range user override (e.g. payoutMaxPct=2) will silently flow into the engine. Consider clamping in resolveFundedRules.",
+    "PostPassSection uses range <input type='range'> for pp-horizon and pp-size-factor, and numeric text inputs for the rule overrides. Numeric inputs accept free-form text — a user can type letters and the field stays empty (observed during testing). Adding type='number' + min/max/step would both signal intent and give native validation."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (client-side only)", "frontend": "100%" },
+  "test_credentials": "N/A",
+  "seed_data_creation": "N/A",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Post-pass flow verified end-to-end. Test recipe: (1) tab-chamber → click [data-testid^='firm-apex'] → click first card in [data-testid='plan-grid'] → btn-next-strategy. (2) In Strategy, click section-postpass-toggle to expand, then click pp-toggle to ENABLE. Only after pp-toggle=ON do pp-horizon/pp-size-*/pp-firstdays/etc become visible. (3) pp-horizon is <input type='range' min=1 max=24>; set it via JS (native setter + input/change events) — Playwright's .fill() rejects range inputs. (4) btn-run triggers runMonteCarlo; app auto-switches to tab-oracle and renders funded-lifecycle panel (testid 'funded-lifecycle') with 11 inner testids. (5) Running with post-pass OFF shows kpi-ppass dashboard but no funded-lifecycle. (6) Firm change: Apex EOD defaults (firstdays=8, ddtype=trailing_eod, floorlock=at_target_level) differ from FTMO (firstdays=14, ddtype=static, floorlock=none) — confirms resolveFundedRules + FUNDED_OVERRIDES_BY_FIRM wire-up. (7) Glossary in ES: 'CICLO POST-PASS'/'SAFETY NET'/'CONSISTENCY POST-PASS'; in EN: 'POST-PASS CYCLE'/'SAFETY NET'/'POST-PASS CONSISTENCY'. (8) Language state is React-only (useState(detectBrowserLang())) — there is NO localStorage key; use [data-testid='lang-es'] / [data-testid='lang-en'] inside the app to toggle. (9) Zero console/page errors throughout. (10) Note the P(survive 3M)=0% / DD-breach=100% observation above — not a bug, strategy-default driven.",
+  "test_results": {
+    "passed": [
+      "tab-strategy loads without error with all 5 collapsibles (section-pnl, section-mae, section-costs, section-behavioral, section-postpass)",
+      "section-postpass renders at bottom of STRATEGY tab with testid intact",
+      "pp-toggle default OFF; clicking it reveals pp-horizon, pp-size-same, pp-size-reduced, pp-reset and all 15 override inputs",
+      "pp-horizon is a 1..24 range slider; setting value=12 updates section label to include 12",
+      "pp-size-same default; clicking pp-size-reduced reveals pp-size-factor slider",
+      "Override inputs pre-fill with firm defaults — Apex EOD: pp-firstdays=8, pp-freq=8, pp-buffer=100, pp-min=100, pp-safety=0, pp-dll=750, pp-maxpct=0.9, pp-cap=2500, pp-ddtype=trailing_eod, pp-floorlock=at_target_level, pp-cons-type='' (empty default)",
+      "pp-reset restores firm defaults after manual edit",
+      "IGNITE with post-pass ENABLED: ORACLE shows funded-lifecycle panel with all 11 required testids and finite numeric values",
+      "IGNITE with post-pass DISABLED: kpi-ppass dashboard renders; no funded-lifecycle panel",
+      "Changing firm to FTMO updates overrides (pp-firstdays 8→14, pp-freq 8→14, pp-buffer 100→0, pp-dll 750→500, pp-maxpct 0.9→1, pp-cap 2500→'', pp-ddtype trailing_eod→static, pp-floorlock at_target_level→none)",
+      "GLOSS · ES contains 'CICLO POST-PASS', 'SAFETY NET', 'CONSISTENCY POST-PASS' and section G 'FUNDED LIFECYCLE'",
+      "GLOSS · EN contains 'POST-PASS CYCLE', 'SAFETY NET', 'POST-PASS CONSISTENCY' and section G 'FUNDED LIFECYCLE'",
+      "lang-es / lang-en toggle translates glossary bodies (ES != EN)",
+      "Zero JavaScript console errors across the full flow (CHAMBER → STRATEGY → ORACLE → GLOSS, with and without post-pass, and firm-switching)"
+    ],
+    "observations": [
+      "Running post-pass on Apex EOD with the DEFAULT custom strategy yields P(survive 3M)=0% / DD-breach=100% and mean survival 13d. Driven by the aggressive trailing-DD + muLoss=-$194 default — not an engine bug. Worth re-running with a higher-WR / smaller-tail strategy to see richer histograms.",
+      "Numeric override inputs accept free-form text (no type='number' + min/max); a blank value silently maps to empty string rather than firm default — cosmetic, but makes the state slightly fragile."
+    ]
+  },
+  "rca of the issue": "N/A — all acceptance criteria met. No bugs reproduced."
+}

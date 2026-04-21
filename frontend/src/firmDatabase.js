@@ -312,6 +312,108 @@ export const FIRM_DATABASE = [
   },
 ];
 
+// ══════════════════════ FUNDED PHASE DEFAULTS ══════════════════════
+// Default rules applied to post-PASS simulation when a plan does not declare its own `funded` block.
+// Rationale: most funded accounts inherit the eval DD/DLL/floor rules. What *really* varies is:
+// payout frequency, first-payout wait, safety-net buffer, payout consistency, post-pass split.
+export const FUNDED_DEFAULTS = {
+  // DD/DLL overrides (null → inherit from eval plan)
+  ddTypeOverride:    null,
+  ddValueOverride:   null,
+  floorLockOverride: null,
+  dailyLossOverride: null,       // null → inherit
+  dailyLossIsFatalOverride: null,
+
+  // Payout mechanics
+  firstPayoutMinDays:  8,        // trading days before first payout is allowed
+  payoutFrequency:     14,       // trading days between subsequent payouts
+  payoutBuffer:        0,        // $ above base capital required before a payout is allowed
+  payoutMinAmount:     100,      // min withdrawable per payout
+  payoutMaxPct:        1.0,      // fraction of profit above buffer that can be withdrawn (1.0 = all)
+  safetyNet:           0,        // Apex-style: profit needed before free withdrawals unlocked
+
+  // Post-pass consistency (often looser or absent, but some firms keep it)
+  payoutConsistency:     null,   // e.g. 0.30 means no single day > 30% of total profit since last payout
+  payoutConsistencyType: null,   // "vs_total" | "vs_payout"
+
+  // After a payout
+  resetOnPayout:   true,         // true → balance resets to capital; floor resets too
+  resetFloorOnPayout: true,      // decoupled for firms that reset balance but keep trailing floor
+
+  // Termination
+  maxBreachesBeforeClose: 1,     // 1 = one strike and out; some firms allow reset-with-fee
+  activationFeeOnReset:   null,  // if null → uses plan.activationFee || plan.fee
+};
+
+// Realistic overrides for specific firms (snapshot Apr 2026; simplified for simulation).
+export const FUNDED_OVERRIDES_BY_FIRM = {
+  apex_eod: {
+    firstPayoutMinDays: 8,  payoutFrequency: 8,   payoutBuffer: 100,
+    safetyNet: 0,           payoutMaxPct: 0.90,   resetOnPayout: false,
+    // Apex PA: first 5 payouts capped at $1500-$2000; we approximate with payoutMaxCap
+    payoutMaxCap: 2500,
+  },
+  apex_intraday: {
+    firstPayoutMinDays: 8,  payoutFrequency: 8,   payoutBuffer: 100,
+    payoutMaxPct: 0.90,     resetOnPayout: false, payoutMaxCap: 2500,
+  },
+  topstep: {
+    firstPayoutMinDays: 5,  payoutFrequency: 1,   payoutBuffer: 0,
+    payoutConsistency: 0.50, payoutConsistencyType: "vs_total",
+    payoutMinAmount: 100,   resetOnPayout: false,
+  },
+  tradeify_growth: { firstPayoutMinDays: 5,  payoutFrequency: 7,  payoutBuffer: 100, resetOnPayout: false },
+  tradeify_select: { firstPayoutMinDays: 5,  payoutFrequency: 7,  payoutBuffer: 100, resetOnPayout: false },
+  mffu_core:       { firstPayoutMinDays: 5,  payoutFrequency: 7,  payoutBuffer: 100,
+                     payoutConsistency: 0.40, payoutConsistencyType: "vs_total", resetOnPayout: false },
+  mffu_rapid:      { firstPayoutMinDays: 5,  payoutFrequency: 7,  payoutBuffer: 100, resetOnPayout: false },
+  fundednext_rapid_fut: { firstPayoutMinDays: 5, payoutFrequency: 14, payoutBuffer: 100, resetOnPayout: false },
+  fundednext_legacy_fut:{ firstPayoutMinDays: 5, payoutFrequency: 14, payoutBuffer: 100,
+                          payoutConsistency: 0.40, payoutConsistencyType: "vs_total", resetOnPayout: false },
+  fundednext_bolt_fut:  { firstPayoutMinDays: 5, payoutFrequency: 14, payoutBuffer: 100,
+                          payoutConsistency: 0.40, payoutConsistencyType: "vs_total", resetOnPayout: false },
+  tpt:             { firstPayoutMinDays: 5,  payoutFrequency: 14, payoutBuffer: 0,
+                     payoutConsistency: 0.20, payoutConsistencyType: "vs_total", resetOnPayout: false },
+  tradeday:        { firstPayoutMinDays: 5,  payoutFrequency: 7,  payoutBuffer: 0,
+                     payoutConsistency: 0.30, payoutConsistencyType: "vs_total", resetOnPayout: false },
+  earn2trade:      { firstPayoutMinDays: 5,  payoutFrequency: 14, payoutBuffer: 0,
+                     payoutConsistency: 0.30, payoutConsistencyType: "vs_total", resetOnPayout: false },
+  leeloo:          { firstPayoutMinDays: 10, payoutFrequency: 14, payoutBuffer: 0,
+                     payoutConsistency: 0.30, payoutConsistencyType: "vs_total", resetOnPayout: false },
+  phidias_fundamental: { firstPayoutMinDays: 5, payoutFrequency: 7, payoutBuffer: 100, resetOnPayout: false },
+  phidias_swing:       { firstPayoutMinDays: 5, payoutFrequency: 7, payoutBuffer: 100, resetOnPayout: false },
+  phidias_static:      { firstPayoutMinDays: 5, payoutFrequency: 7, payoutBuffer: 0,   resetOnPayout: false },
+  ftmo:            { firstPayoutMinDays: 14, payoutFrequency: 14, payoutBuffer: 0, resetOnPayout: true  },
+  fundednext_stellar: { firstPayoutMinDays: 14, payoutFrequency: 14, payoutBuffer: 0, resetOnPayout: true },
+  the5ers:         { firstPayoutMinDays: 10, payoutFrequency: 14, payoutBuffer: 0,
+                     payoutConsistency: 0.50, payoutConsistencyType: "vs_total", resetOnPayout: true },
+  fundingpips:     { firstPayoutMinDays: 14, payoutFrequency: 14, payoutBuffer: 0, resetOnPayout: true },
+  custom:          {},
+};
+
+// Resolve funded rules for a plan: defaults ⊕ firm overrides ⊕ user override.
+export function resolveFundedRules(plan, firmId, userOverride = {}) {
+  const base      = { ...FUNDED_DEFAULTS };
+  const firmOv    = FUNDED_OVERRIDES_BY_FIRM[firmId] || {};
+  const userOv    = userOverride || {};
+  // Inherit DD/DLL/floor from the plan unless overridden
+  const resolved = {
+    ...base,
+    ...firmOv,
+    ...userOv,
+    // Effective fields used by the engine
+    ddType:           (userOv.ddTypeOverride   ?? firmOv.ddTypeOverride   ?? base.ddTypeOverride)   || plan.ddType,
+    ddValue:          (userOv.ddValueOverride  ?? firmOv.ddValueOverride  ?? base.ddValueOverride)  ?? plan.ddValue,
+    floorLock:        (userOv.floorLockOverride?? firmOv.floorLockOverride?? base.floorLockOverride)|| plan.floorLock,
+    dailyLoss:        (userOv.dailyLossOverride      ?? firmOv.dailyLossOverride      ?? base.dailyLossOverride)      ?? plan.dailyLoss,
+    dailyLossIsFatal: (userOv.dailyLossIsFatalOverride?? firmOv.dailyLossIsFatalOverride?? base.dailyLossIsFatalOverride)?? plan.dailyLossIsFatal,
+    profitSplit:      plan.profitSplit,
+    capital:          plan.capital,
+    target:           0,  // funded has no "target" — we're just surviving & harvesting
+  };
+  return resolved;
+}
+
 export const STRATEGY_DEFAULTS = {
   // Mode
   mode:      "simple",        // "simple" | "bootstrap"
@@ -350,6 +452,13 @@ export const STRATEGY_DEFAULTS = {
   minDaysType:            "total",          // "total" | "winning"
   winDayThreshold:        50,
   maxDaysType:            "trading",        // "trading" | "calendar"
+
+  // Post-PASS (funded) cycle simulation
+  postPassEnabled:       false,
+  postPassHorizonMonths: 6,          // 1..24
+  postPassSizeMode:      "same",     // "same" | "reduced"
+  postPassSizeFactor:    0.50,       // 0..1  (applied if postPassSizeMode === "reduced")
+  fundedOverride:        {},         // per-run manual overrides (keys of FUNDED_DEFAULTS)
 
   nSims: 10000,
 };
