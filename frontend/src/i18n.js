@@ -533,6 +533,20 @@ export const TRANSLATIONS = {
     gloss_winning_days_body: "cuando una firma exige un mínimo de días tradeados, puede contar TODOS los días (total) o solo los ganadores (≥ $X). el modo 'WINNING DAYS ONLY' ignora los días planos/negativos, lo que suele alargar el camino hasta el PASS pero refleja mejor lo que algunas firmas exigen internamente para validar la cuenta.\n\nejemplo: minDays=5 con winning-days y threshold $50 → necesitas 5 días con pnl ≥ $50, no solo 5 días de trading.",
     gloss_calendar_days_name: "CALENDAR vs TRADING DAYS",
     gloss_calendar_days_body: "el contador de máximo de días puede medirse en días de trading (~21/mes, ignora weekends) o en días de calendario (incluye weekends). Apex usa CALENDAR — es más estricto. FTMO usa TRADING — más permisivo.\n\nejemplo FTMO 100K (máx 30 trading days) vs Apex 50K EOD (máx 30 calendar days): aunque el número es idéntico (30), Apex te da ~21 días reales de trading efectivo, mientras FTMO te da ~42 días naturales para cerrar los 30 tradeables.",
+
+    // Auth
+    auth_sign_in: "iniciar sesión",
+    auth_sign_up: "crear cuenta",
+    auth_sign_out: "cerrar sesión",
+    auth_email: "email",
+    auth_password: "contraseña",
+    auth_password_hint: "mínimo 6 caracteres",
+    auth_submit_signin: "entrar",
+    auth_submit_signup: "crear cuenta",
+    auth_switch_to_signup: "¿no tienes cuenta? regístrate",
+    auth_switch_to_signin: "¿ya tienes cuenta? inicia sesión",
+    auth_error_invalid_email: "email no válido",
+    auth_error_short_password: "la contraseña debe tener al menos 6 caracteres",
   },
   en: {
     app_title: "PROP · FORGE",
@@ -1038,6 +1052,20 @@ export const TRANSLATIONS = {
     gloss_winning_days_body: "when a firm requires a minimum number of trading days, they can either count ALL days (total) or only winning days (≥ $X). the 'WINNING DAYS ONLY' mode ignores flat/losing days, which typically lengthens the path to PASS but better reflects what some firms internally require to validate the account.\n\nexample: minDays=5 with winning-days mode and $50 threshold → you need 5 days with pnl ≥ $50, not just 5 trading days.",
     gloss_calendar_days_name: "CALENDAR vs TRADING DAYS",
     gloss_calendar_days_body: "the max-days counter can be measured in trading days (~21/mo, weekends ignored) or in calendar days (includes weekends). Apex uses CALENDAR — stricter. FTMO uses TRADING — more lenient.\n\nexample FTMO 100K (max 30 trading days) vs Apex 50K EOD (max 30 calendar days): the number is identical (30), but Apex gives you ~21 actual tradable days, while FTMO gives you ~42 natural days to complete the 30 tradable ones.",
+
+    // Auth
+    auth_sign_in: "sign in",
+    auth_sign_up: "sign up",
+    auth_sign_out: "log out",
+    auth_email: "email",
+    auth_password: "password",
+    auth_password_hint: "minimum 6 characters",
+    auth_submit_signin: "enter",
+    auth_submit_signup: "create account",
+    auth_switch_to_signup: "no account? sign up",
+    auth_switch_to_signin: "already have an account? sign in",
+    auth_error_invalid_email: "invalid email",
+    auth_error_short_password: "password must be at least 6 characters",
   },
 };
 

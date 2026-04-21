@@ -6,6 +6,7 @@ import { C } from "./lib/colors";
 import { isPlanModified } from "./lib/format";
 import { downloadJSON, exportPNG as exportPNGHelper } from "./lib/export";
 import { LangProvider, useT } from "./components/LangContext";
+import { AuthProvider } from "./components/AuthContext";
 import CsvModal from "./components/CsvModal";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
@@ -23,11 +24,13 @@ const LoadingFallback = ({ message }) => (
   </div>
 );
 
-// Root provides the language context
+// Root provides the language and auth context
 function App() {
   return (
     <LangProvider>
-      <AppInner />
+      <AuthProvider>
+        <AppInner />
+      </AuthProvider>
     </LangProvider>
   );
 }

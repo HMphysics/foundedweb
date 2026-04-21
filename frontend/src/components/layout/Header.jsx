@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { FIRM_DATABASE } from "../../firmDatabase";
 import { C } from "../../lib/colors";
 import { useT } from "../LangContext";
+import { useAuth } from "../AuthContext";
 import HeaderSeal from "./HeaderSeal";
+import AuthModal from "../auth/AuthModal";
 
 function LangToggle({ lang, setLang }) {
   const active = { color: C.brass, fontWeight: 700 };
@@ -24,30 +27,81 @@ function LangToggle({ lang, setLang }) {
   );
 }
 
+function truncateEmail(email) {
+  if (!email) return '';
+  const [local, domain] = email.split('@');
+  if (!domain) return email;
+  const domainParts = domain.split('.');
+  const ext = domainParts.pop();
+  return `${local.slice(0, 4)}@...${ext}`;
+}
+
 export default function Header() {
   const { lang, t, setLang } = useT();
+  const { user, loading, signOut } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const totalFirms = FIRM_DATABASE.filter(f => f.market !== "custom").length;
   const totalPlans = FIRM_DATABASE.reduce((a, f) => a + f.plans.length, 0);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
+  };
+
   return (
-    <header className="pf-header" data-testid="pf-header">
-      <div className="pf-header-inner">
-        <div className="pf-brand">
-          <HeaderSeal />
-          <div>
-            <div className="pf-brand-mark" data-testid="hero-title">
-              PROP<span className="dot">·</span>FORGE
+    <>
+      <header className="pf-header" data-testid="pf-header">
+        <div className="pf-header-inner">
+          <div className="pf-brand">
+            <HeaderSeal />
+            <div>
+              <div className="pf-brand-mark" data-testid="hero-title">
+                PROP<span className="dot">·</span>FORGE
+              </div>
+              <span className="pf-brand-sub">{t("app_subtitle")}</span>
+              <span className="pf-brand-line" />
             </div>
-            <span className="pf-brand-sub">{t("app_subtitle")}</span>
-            <span className="pf-brand-line" />
+          </div>
+          <div className="pf-header-actions">
+            <LangToggle lang={lang} setLang={setLang} />
+            
+            {!loading && (
+              <div className="pf-auth" data-testid="pf-auth">
+                {user ? (
+                  <>
+                    <span className="pf-auth-email" data-testid="user-email">
+                      {truncateEmail(user.email)}
+                    </span>
+                    <button 
+                      className="pf-auth-btn" 
+                      onClick={handleSignOut}
+                      data-testid="logout-btn"
+                    >
+                      {t('auth_sign_out')}
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    className="pf-auth-btn" 
+                    onClick={() => setShowAuthModal(true)}
+                    data-testid="signin-btn"
+                  >
+                    {t('auth_sign_in')}
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div className="pf-meta">
+              {totalFirms} chambers <span className="acc">·</span> {totalPlans} plans
+            </div>
           </div>
         </div>
-        <div className="pf-header-actions">
-          <LangToggle lang={lang} setLang={setLang} />
-          <div className="pf-meta">
-            {totalFirms} chambers <span className="acc">·</span> {totalPlans} plans
-          </div>
-        </div>
-      </div>
-    </header>
+      </header>
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+    </>
   );
 }
