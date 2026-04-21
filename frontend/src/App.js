@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, lazy, Suspense } from "react";
 import "./App.css";
 import { FIRM_DATABASE, STRATEGY_DEFAULTS, resolveFundedRules } from "./firmDatabase";
 import { runMonteCarlo } from "./monteCarlo";
@@ -6,13 +6,22 @@ import { C } from "./lib/colors";
 import { isPlanModified } from "./lib/format";
 import { downloadJSON, exportPNG as exportPNGHelper } from "./lib/export";
 import { LangProvider, useT } from "./components/LangContext";
-import Glossary from "./components/Glossary";
 import CsvModal from "./components/CsvModal";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import ChamberTab from "./components/chamber/ChamberTab";
 import StrategyTab from "./components/strategy/StrategyTab";
-import OracleTab from "./components/oracle/OracleTab";
+
+// Lazy-loaded heavy tabs
+const OracleTab = lazy(() => import("./components/oracle/OracleTab"));
+const Glossary = lazy(() => import("./components/Glossary"));
+
+// Archive noir loading fallback
+const LoadingFallback = ({ message }) => (
+  <div className="lazy-fallback" data-testid="lazy-fallback">
+    <span className="lazy-fallback-text">{message}</span>
+  </div>
+);
 
 // Root provides the language context
 function App() {
@@ -226,13 +235,15 @@ function AppInner() {
       )}
 
       {activeTab === "oracle" && (
-        <OracleTab
-          results={results} loading={loading}
-          planDraft={planDraft} selectedFirm={selectedFirm} isModified={isModified}
-          resultsRef={resultsRef} compareRef={compareRef} compareSlots={compareSlots}
-          exportJSON={exportJSON} exportPNG={exportPNG} exportCompareJSON={exportCompareJSON}
-          setActiveTab={setActiveTab}
-        />
+        <Suspense fallback={<LoadingFallback message="consulting the oracle..." />}>
+          <OracleTab
+            results={results} loading={loading}
+            planDraft={planDraft} selectedFirm={selectedFirm} isModified={isModified}
+            resultsRef={resultsRef} compareRef={compareRef} compareSlots={compareSlots}
+            exportJSON={exportJSON} exportPNG={exportPNG} exportCompareJSON={exportCompareJSON}
+            setActiveTab={setActiveTab}
+          />
+        </Suspense>
       )}
 
       {activeTab === "gloss" && (
@@ -243,7 +254,9 @@ function AppInner() {
             <h2 className="pf-tab-title">{t("tab_04_title")}</h2>
             <div className="pf-tab-hint">{t("tab_04_hint")}</div>
           </div>
-          <Glossary />
+          <Suspense fallback={<LoadingFallback message="opening the archive..." />}>
+            <Glossary />
+          </Suspense>
         </div>
       )}
 
