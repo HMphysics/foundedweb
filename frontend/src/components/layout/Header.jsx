@@ -4,6 +4,7 @@ import { C } from "../../lib/colors";
 import { useT } from "../LangContext";
 import { useAuth } from "../AuthContext";
 import { useUserPlan } from "../UserPlanContext";
+import { openCustomerPortal } from "../../lib/stripe";
 import HeaderSeal from "./HeaderSeal";
 import AuthModal from "../auth/AuthModal";
 
@@ -103,6 +104,16 @@ export default function Header() {
                       {truncateEmail(user.email)}
                     </span>
                     {!planLoading && <PlanBadge plan={plan} />}
+                    {plan === 'pro' && (
+                      <button 
+                        className="pf-auth-btn" 
+                        onClick={openCustomerPortal}
+                        data-testid="manage-subscription-btn"
+                        style={{ fontSize: 10 }}
+                      >
+                        {t('manage_subscription')}
+                      </button>
+                    )}
                     <button 
                       className="pf-auth-btn" 
                       onClick={handleSignOut}

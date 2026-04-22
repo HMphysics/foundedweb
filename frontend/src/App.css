@@ -1160,3 +1160,28 @@ input[type=range].fg-range::-moz-range-thumb {
 .auth-switch:hover {
   color: var(--brass);
 }
+
+/* ═══════════════ Stripe Banner ═══════════════ */
+.stripe-banner {
+  padding: 14px 20px;
+  text-align: center;
+  font-family: var(--plex);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  animation: stripeFadeIn 0.3s ease-out;
+}
+.stripe-banner--success {
+  background: rgba(91, 122, 111, 0.15);
+  border-bottom: 1px solid var(--verdigris);
+  color: var(--bone);
+}
+.stripe-banner--cancel {
+  background: rgba(61, 72, 80, 0.3);
+  border-bottom: 1px solid var(--dust);
+  color: var(--smoke);
+}
+@keyframes stripeFadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

@@ -561,6 +561,15 @@ export const TRANSLATIONS = {
     paywall_upgrade_monthly: "pro · 12€/mes",
     paywall_upgrade_lifetime: "lifetime · 79€ pago único",
     paywall_close: "cerrar",
+
+    // Stripe
+    stripe_success_title: "¡pago recibido!",
+    stripe_success_body: "bienvenido a {plan}. desbloqueando tus features...",
+    stripe_cancel_title: "checkout cancelado",
+    stripe_cancel_body: "no se ha realizado ningún cargo",
+    manage_subscription: "gestionar suscripción",
+    stripe_loading: "procesando pago...",
+    stripe_error: "error al procesar · intenta de nuevo",
   },
   en: {
     app_title: "PROP · FORGE",
@@ -1094,6 +1103,15 @@ export const TRANSLATIONS = {
     paywall_upgrade_monthly: "pro · €12/month",
     paywall_upgrade_lifetime: "lifetime · €79 one-time",
     paywall_close: "close",
+
+    // Stripe
+    stripe_success_title: "payment received!",
+    stripe_success_body: "welcome to {plan}. unlocking your features...",
+    stripe_cancel_title: "checkout cancelled",
+    stripe_cancel_body: "no charge was made",
+    manage_subscription: "manage subscription",
+    stripe_loading: "processing payment...",
+    stripe_error: "error processing · please try again",
   },
 };
 

@@ -1,5 +1,6 @@
 import { useT } from './LangContext';
 import { C } from '../lib/colors';
+import { startCheckout } from '../lib/stripe';
 
 const plans = [
   {
@@ -7,18 +8,21 @@ const plans = [
     features: ['3 firms (Apex EOD, Topstep, FTMO)', 'Simple mode only', 'No export', 'No compare'],
     price: null,
     cta: null,
+    planType: null,
   },
   {
     id: 'pro',
     features: ['All 21 firms', 'Bootstrap mode', 'Export JSON + PNG', 'Compare up to 3', 'Post-pass lifecycle', 'Commissions & behavioral'],
     price: '€12/month',
     cta: 'paywall_upgrade_monthly',
+    planType: 'pro_monthly',
   },
   {
     id: 'lifetime',
     features: ['Everything in Pro', 'Unlimited saved configs', 'Lifetime access', 'Priority support'],
     price: '€79 one-time',
     cta: 'paywall_upgrade_lifetime',
+    planType: 'lifetime',
   },
 ];
 
@@ -27,6 +31,12 @@ export default function UpgradeModal({ onClose }) {
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) onClose();
+  };
+
+  const handlePurchase = (planType) => {
+    if (planType) {
+      startCheckout(planType);
+    }
   };
 
   return (
@@ -130,6 +140,7 @@ export default function UpgradeModal({ onClose }) {
 
               {plan.cta && (
                 <button
+                  onClick={() => handlePurchase(plan.planType)}
                   style={{
                     width: '100%',
                     background: plan.id === 'pro' ? C.brass : 'transparent',
@@ -160,7 +171,7 @@ export default function UpgradeModal({ onClose }) {
           textAlign: 'center',
           fontStyle: 'italic',
         }}>
-          stripe integration coming soon
+          powered by stripe · secure checkout
         </p>
       </div>
     </div>

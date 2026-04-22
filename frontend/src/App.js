@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, lazy, Suspense } from "react";
+import { useState, useMemo, useCallback, useRef, lazy, Suspense, useEffect } from "react";
 import "./App.css";
 import { FIRM_DATABASE, STRATEGY_DEFAULTS, resolveFundedRules } from "./firmDatabase";
 import { runMonteCarlo } from "./monteCarlo";
@@ -55,9 +55,29 @@ function AppInner() {
   const [compareLoading, setCompareLoading] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(true);
+  const [stripeBanner, setStripeBanner] = useState(null); // { type: 'success' | 'cancel', message: string }
 
   const resultsRef = useRef(null);
   const compareRef = useRef(null);
+
+  // ─── Stripe redirect handling ───
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const stripeStatus = params.get('stripe');
+    
+    if (stripeStatus === 'success') {
+      setStripeBanner({ type: 'success', message: t('stripe_success_title') });
+      window.history.replaceState({}, '', window.location.pathname);
+      // Delay refresh to allow webhook to process
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } else if (stripeStatus === 'cancel') {
+      setStripeBanner({ type: 'cancel', message: t('stripe_cancel_title') });
+      window.history.replaceState({}, '', window.location.pathname);
+      setTimeout(() => setStripeBanner(null), 3000);
+    }
+  }, [t]);
 
   // ─── Derivations ───
   const selectedFirm = useMemo(
@@ -210,6 +230,12 @@ function AppInner() {
           ))}
         </div>
       </div>
+
+      {stripeBanner && (
+        <div className={`stripe-banner stripe-banner--${stripeBanner.type}`} data-testid="stripe-banner">
+          {stripeBanner.message}
+        </div>
+      )}
 
       {activeTab === "chamber" && (
         <ChamberTab
