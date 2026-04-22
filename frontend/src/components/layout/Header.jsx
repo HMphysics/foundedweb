@@ -3,7 +3,7 @@ import { FIRM_DATABASE } from "../../firmDatabase";
 import { C } from "../../lib/colors";
 import { useT } from "../LangContext";
 import { useAuth } from "../AuthContext";
-import { useUserPlan } from "../../hooks/useUserPlan";
+import { useUserPlan } from "../UserPlanContext";
 import HeaderSeal from "./HeaderSeal";
 import AuthModal from "../auth/AuthModal";
 

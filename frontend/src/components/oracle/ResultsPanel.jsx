@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C } from "../../lib/colors";
 import { fmtMoney } from "../../lib/format";
 import { useT } from "../LangContext";
-import { useUserPlan } from "../../hooks/useUserPlan";
+import { useUserPlan } from "../UserPlanContext";
 import { Warn } from "../shared/ui";
 import ResultsDashboard from "./ResultsDashboard";
 import UpgradeModal from "../UpgradeModal";

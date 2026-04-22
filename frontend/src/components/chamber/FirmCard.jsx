@@ -1,7 +1,7 @@
 import { C } from "../../lib/colors";
 import { useT } from "../LangContext";
 import { Tag } from "../shared/ui";
-import { useUserPlan } from "../../hooks/useUserPlan";
+import { useUserPlan } from "../UserPlanContext";
 
 function estimateDifficulty(firm) {
   let score = 1;

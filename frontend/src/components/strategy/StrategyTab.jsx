@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C } from "../../lib/colors";
 import { useT } from "../LangContext";
-import { useUserPlan } from "../../hooks/useUserPlan";
+import { useUserPlan } from "../UserPlanContext";
 import { SectionBar } from "../shared/ui";
 import AccountEditor from "../account/AccountEditor";
 import CompareRack from "../compare/CompareRack";

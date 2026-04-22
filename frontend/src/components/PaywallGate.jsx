@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useUserPlan } from '../hooks/useUserPlan';
+import { useUserPlan } from './UserPlanContext';
 import { useT } from './LangContext';
 import { C } from '../lib/colors';
 import UpgradeModal from './UpgradeModal';

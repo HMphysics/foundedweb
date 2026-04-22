@@ -7,6 +7,7 @@ import { isPlanModified } from "./lib/format";
 import { downloadJSON, exportPNG as exportPNGHelper } from "./lib/export";
 import { LangProvider, useT } from "./components/LangContext";
 import { AuthProvider } from "./components/AuthContext";
+import { UserPlanProvider } from "./components/UserPlanContext";
 import CsvModal from "./components/CsvModal";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
@@ -29,7 +30,9 @@ function App() {
   return (
     <LangProvider>
       <AuthProvider>
-        <AppInner />
+        <UserPlanProvider>
+          <AppInner />
+        </UserPlanProvider>
       </AuthProvider>
     </LangProvider>
   );

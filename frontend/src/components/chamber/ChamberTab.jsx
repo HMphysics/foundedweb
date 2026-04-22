@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C } from "../../lib/colors";
 import { useT } from "../LangContext";
-import { useUserPlan } from "../../hooks/useUserPlan";
+import { useUserPlan } from "../UserPlanContext";
 import WelcomeBlock from "../layout/WelcomeBlock";
 import CustomCard from "./CustomCard";
 import FirmCard from "./FirmCard";

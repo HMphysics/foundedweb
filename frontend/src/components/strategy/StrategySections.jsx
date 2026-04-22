@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { C } from "../../lib/colors";
 import { fmtMoney } from "../../lib/format";
 import { useT } from "../LangContext";
-import { useUserPlan } from "../../hooks/useUserPlan";
+import { useUserPlan } from "../UserPlanContext";
 import {
   Collapsible, NumField, SelectField, ToggleRow,
 } from "../shared/ui";
