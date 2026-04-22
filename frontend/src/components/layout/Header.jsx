@@ -3,6 +3,7 @@ import { FIRM_DATABASE } from "../../firmDatabase";
 import { C } from "../../lib/colors";
 import { useT } from "../LangContext";
 import { useAuth } from "../AuthContext";
+import { useUserPlan } from "../../hooks/useUserPlan";
 import HeaderSeal from "./HeaderSeal";
 import AuthModal from "../auth/AuthModal";
 
@@ -27,6 +28,31 @@ function LangToggle({ lang, setLang }) {
   );
 }
 
+function PlanBadge({ plan }) {
+  const colors = {
+    free: C.smoke,
+    pro: C.brass,
+    lifetime: C.cinnabar,
+  };
+  return (
+    <span 
+      style={{
+        fontSize: 9,
+        fontFamily: "var(--mono)",
+        fontWeight: 600,
+        letterSpacing: '0.15em',
+        color: colors[plan] || C.smoke,
+        padding: '2px 6px',
+        border: `1px solid ${colors[plan] || C.smoke}`,
+        marginLeft: 8,
+      }}
+      data-testid="plan-badge"
+    >
+      {plan?.toUpperCase()}
+    </span>
+  );
+}
+
 function truncateEmail(email) {
   if (!email) return '';
   const [local, domain] = email.split('@');
@@ -39,6 +65,7 @@ function truncateEmail(email) {
 export default function Header() {
   const { lang, t, setLang } = useT();
   const { user, loading, signOut } = useAuth();
+  const { plan, loading: planLoading } = useUserPlan();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const totalFirms = FIRM_DATABASE.filter(f => f.market !== "custom").length;
   const totalPlans = FIRM_DATABASE.reduce((a, f) => a + f.plans.length, 0);
@@ -75,6 +102,7 @@ export default function Header() {
                     <span className="pf-auth-email" data-testid="user-email">
                       {truncateEmail(user.email)}
                     </span>
+                    {!planLoading && <PlanBadge plan={plan} />}
                     <button 
                       className="pf-auth-btn" 
                       onClick={handleSignOut}

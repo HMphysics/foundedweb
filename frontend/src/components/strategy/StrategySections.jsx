@@ -4,45 +4,87 @@ import { useMemo, useState } from "react";
 import { C } from "../../lib/colors";
 import { fmtMoney } from "../../lib/format";
 import { useT } from "../LangContext";
+import { useUserPlan } from "../../hooks/useUserPlan";
 import {
   Collapsible, NumField, SelectField, ToggleRow,
 } from "../shared/ui";
 import { parseBootstrapData, INSTRUMENT_MAE_RATIOS } from "../../monteCarlo";
 import { resolveFundedRules } from "../../firmDatabase";
+import UpgradeModal from "../UpgradeModal";
 
 export function ModeSelector({ strategy, setStrategy }) {
   const { t } = useT();
+  const { canAccess } = useUserPlan();
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const mode = strategy.mode || "simple";
+  const bootstrapLocked = !canAccess('bootstrap');
+
+  const handleModeChange = (modeId) => {
+    if (modeId === 'bootstrap' && bootstrapLocked) {
+      setShowUpgrade(true);
+      return;
+    }
+    setStrategy({ ...strategy, mode: modeId });
+  };
+
   return (
-    <div className="fg-panel" style={{ padding: 16 }} data-testid="mode-selector">
-      <div style={{ fontFamily: "var(--plex)", fontSize: 11, letterSpacing: 0.2,
-                    textTransform: "uppercase", color: C.steel, fontWeight: 500, marginBottom: 10 }}>
-        § {t("mode_title")}
+    <>
+      <div className="fg-panel" style={{ padding: 16 }} data-testid="mode-selector">
+        <div style={{ fontFamily: "var(--plex)", fontSize: 11, letterSpacing: 0.2,
+                      textTransform: "uppercase", color: C.steel, fontWeight: 500, marginBottom: 10 }}>
+          § {t("mode_title")}
+        </div>
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+          {[
+            { id: "simple",    label: t("mode_simple"),    sub: t("mode_simple_sub"), locked: false },
+            { id: "bootstrap", label: t("mode_bootstrap"), sub: t("mode_bootstrap_sub"), locked: bootstrapLocked },
+          ].map(m => (
+            <label key={m.id} style={{ 
+                     flex: 1, minWidth: 200, cursor: "pointer", padding: 12,
+                     border: `1px solid ${mode === m.id ? C.cinnabar : m.locked ? C.dust : C.dust}`,
+                     background: mode === m.id ? `${C.cinnabar}10` : "transparent",
+                     opacity: m.locked ? 0.7 : 1,
+                     position: 'relative',
+                   }}
+                   onClick={() => handleModeChange(m.id)}
+                   data-testid={`mode-${m.id}`}>
+              {m.locked && (
+                <span style={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 9,
+                  fontFamily: "var(--mono)",
+                  color: C.brass,
+                  letterSpacing: "0.1em",
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.brass} strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  PRO
+                </span>
+              )}
+              <input type="radio" name="mode" checked={mode === m.id}
+                     onChange={() => {}}
+                     style={{ accentColor: C.cinnabar, marginRight: 10 }} />
+              <span style={{ fontFamily: "var(--plex)", fontWeight: 600, fontSize: 13,
+                             color: mode === m.id ? C.cinnabar : C.bone, letterSpacing: 0.05 }}>
+                {m.label}
+              </span>
+              <div style={{ marginTop: 6, color: C.linen, fontSize: 12, fontStyle: "italic",
+                            fontFamily: "var(--plex)", fontWeight: 300, lineHeight: 1.45 }}>
+                {m.sub}
+              </div>
+            </label>
+          ))}
+        </div>
       </div>
-      <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-        {[
-          { id: "simple",    label: t("mode_simple"),    sub: t("mode_simple_sub") },
-          { id: "bootstrap", label: t("mode_bootstrap"), sub: t("mode_bootstrap_sub") },
-        ].map(m => (
-          <label key={m.id} style={{ flex: 1, minWidth: 200, cursor: "pointer", padding: 12,
-                                      border: `1px solid ${mode === m.id ? C.cinnabar : C.dust}`,
-                                      background: mode === m.id ? `${C.cinnabar}10` : "transparent" }}
-                 data-testid={`mode-${m.id}`}>
-            <input type="radio" name="mode" checked={mode === m.id}
-                   onChange={() => setStrategy({ ...strategy, mode: m.id })}
-                   style={{ accentColor: C.cinnabar, marginRight: 10 }} />
-            <span style={{ fontFamily: "var(--plex)", fontWeight: 600, fontSize: 13,
-                           color: mode === m.id ? C.cinnabar : C.bone, letterSpacing: 0.05 }}>
-              {m.label}
-            </span>
-            <div style={{ marginTop: 6, color: C.linen, fontSize: 12, fontStyle: "italic",
-                          fontFamily: "var(--plex)", fontWeight: 300, lineHeight: 1.45 }}>
-              {m.sub}
-            </div>
-          </label>
-        ))}
-      </div>
-    </div>
+      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
+    </>
   );
 }
 

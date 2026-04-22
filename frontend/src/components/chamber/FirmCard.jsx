@@ -1,6 +1,7 @@
 import { C } from "../../lib/colors";
 import { useT } from "../LangContext";
 import { Tag } from "../shared/ui";
+import { useUserPlan } from "../../hooks/useUserPlan";
 
 function estimateDifficulty(firm) {
   let score = 1;
@@ -21,6 +22,9 @@ function estimateDifficulty(firm) {
 
 export default function FirmCard({ firm, selected, onClick }) {
   const { t } = useT();
+  const { canAccess } = useUserPlan();
+  const isLocked = !canAccess(`firm:${firm.id}`);
+  
   const hasTwoPhase = firm.plans.some(p => p.phases === 2);
   const ddTypes = [...new Set(firm.plans.map(p => p.ddType))];
   const ddTag = (type) => ({
@@ -30,13 +34,37 @@ export default function FirmCard({ firm, selected, onClick }) {
     trailing_eod: C.brass, trailing_intraday: C.cinnabar, static: C.steel
   }[type] || C.smoke);
   const stars = estimateDifficulty(firm);
+  
   return (
-    <div className={`fg-card ${selected ? "selected" : ""}`}
+    <div className={`fg-card ${selected ? "selected" : ""} ${isLocked ? "locked" : ""}`}
          onClick={onClick} data-testid={`firm-${firm.id}`}
-         style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12, minHeight: 148, position: "relative" }}>
+         style={{ 
+           padding: 18, display: "flex", flexDirection: "column", gap: 12, minHeight: 148, position: "relative",
+           opacity: isLocked ? 0.6 : 1,
+         }}>
+      {isLocked && (
+        <div style={{
+          position: "absolute",
+          top: 8,
+          right: 8,
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          fontSize: 9,
+          fontFamily: "var(--mono)",
+          color: C.brass,
+          letterSpacing: "0.1em",
+        }} data-testid={`firm-${firm.id}-locked`}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.brass} strokeWidth="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          PRO
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontFamily: "var(--plex)", fontWeight: 600, color: C.bone, fontSize: 14.5,
+          <div style={{ fontFamily: "var(--plex)", fontWeight: 600, color: isLocked ? C.smoke : C.bone, fontSize: 14.5,
                         letterSpacing: 0.02,
                         whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {firm.name}

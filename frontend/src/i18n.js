@@ -547,6 +547,20 @@ export const TRANSLATIONS = {
     auth_switch_to_signin: "¿ya tienes cuenta? inicia sesión",
     auth_error_invalid_email: "email no válido",
     auth_error_short_password: "la contraseña debe tener al menos 6 caracteres",
+
+    // Paywall
+    paywall_pro_feature: "función pro",
+    paywall_current_plan: "tu plan actual: {plan}",
+    paywall_upgrade_cta: "desbloquear",
+    paywall_free_badge: "free",
+    paywall_pro_badge: "pro",
+    paywall_lifetime_badge: "lifetime",
+    paywall_locked_firm: "firma bloqueada en plan free",
+    paywall_upgrade_modal_title: "desbloquea prop forge",
+    paywall_upgrade_modal_body: "con el plan pro accedes a las 21 firmas, modo bootstrap, exportar, comparar y más",
+    paywall_upgrade_monthly: "pro · 12€/mes",
+    paywall_upgrade_lifetime: "lifetime · 79€ pago único",
+    paywall_close: "cerrar",
   },
   en: {
     app_title: "PROP · FORGE",
@@ -1066,6 +1080,20 @@ export const TRANSLATIONS = {
     auth_switch_to_signin: "already have an account? sign in",
     auth_error_invalid_email: "invalid email",
     auth_error_short_password: "password must be at least 6 characters",
+
+    // Paywall
+    paywall_pro_feature: "pro feature",
+    paywall_current_plan: "your plan: {plan}",
+    paywall_upgrade_cta: "unlock",
+    paywall_free_badge: "free",
+    paywall_pro_badge: "pro",
+    paywall_lifetime_badge: "lifetime",
+    paywall_locked_firm: "firm locked on free plan",
+    paywall_upgrade_modal_title: "unlock prop forge",
+    paywall_upgrade_modal_body: "the pro plan unlocks all 21 firms, bootstrap mode, export, compare and more",
+    paywall_upgrade_monthly: "pro · €12/month",
+    paywall_upgrade_lifetime: "lifetime · €79 one-time",
+    paywall_close: "close",
   },
 };
 

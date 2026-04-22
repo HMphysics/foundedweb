@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { C } from "../../lib/colors";
 import { fmtMoney } from "../../lib/format";
 import { useT } from "../LangContext";
+import { useUserPlan } from "../../hooks/useUserPlan";
 import { Warn } from "../shared/ui";
 import ResultsDashboard from "./ResultsDashboard";
+import UpgradeModal from "../UpgradeModal";
 
 function Warnings({ plan, firm, isModified }) {
   const { t } = useT();
@@ -51,6 +54,18 @@ function EmptyState() {
 
 export default function ResultsPanel({ results, loading, plan, firm, isModified, onExportJSON, onExportPNG }) {
   const { t } = useT();
+  const { canAccess } = useUserPlan();
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const exportLocked = !canAccess('export');
+
+  const handleExport = (fn) => {
+    if (exportLocked) {
+      setShowUpgrade(true);
+      return;
+    }
+    fn();
+  };
+
   return (
     <div>
       <Warnings plan={plan} firm={firm} isModified={isModified} />
@@ -60,11 +75,32 @@ export default function ResultsPanel({ results, loading, plan, firm, isModified,
         <>
           <ResultsDashboard results={results} plan={plan} />
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 10 }}>
-            <button className="fg-btn-ghost" onClick={onExportPNG} data-testid="btn-export-png">{t("btn_export_png")}</button>
-            <button className="fg-btn-ghost" onClick={onExportJSON} data-testid="btn-export-json">{t("btn_export_json")}</button>
+            <button className="fg-btn-ghost" onClick={() => handleExport(onExportPNG)} data-testid="btn-export-png"
+                    style={{ position: 'relative' }}>
+              {exportLocked && (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.brass} strokeWidth="2"
+                     style={{ marginRight: 6 }}>
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              )}
+              {t("btn_export_png")}
+            </button>
+            <button className="fg-btn-ghost" onClick={() => handleExport(onExportJSON)} data-testid="btn-export-json"
+                    style={{ position: 'relative' }}>
+              {exportLocked && (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.brass} strokeWidth="2"
+                     style={{ marginRight: 6 }}>
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              )}
+              {t("btn_export_json")}
+            </button>
           </div>
         </>
       )}
+      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
     </div>
   );
 }
