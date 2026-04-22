@@ -158,6 +158,10 @@ async def stripe_webhook(request: Request):
     event_type = event["type"]
     obj = event["data"]["object"]
     
+    # Convert Stripe object to dict for easier access
+    if hasattr(obj, 'to_dict_recursive'):
+        obj = obj.to_dict_recursive()
+    
     if event_type == "checkout.session.completed":
         user_id = obj.get("client_reference_id") or obj.get("metadata", {}).get("user_id")
         plan_type = obj.get("metadata", {}).get("plan_type")
