@@ -158,9 +158,24 @@ async def stripe_webhook(request: Request):
     event_type = event["type"]
     obj = event["data"]["object"]
     
-    # Convert Stripe object to dict for easier access
-    if hasattr(obj, 'to_dict_recursive'):
+    # Log for debugging
+    logging.info(f"Stripe webhook received: {event_type}")
+    logging.info(f"Object type before conversion: {type(obj)}")
+    
+    # Convert Stripe object to dict regardless of version
+    if hasattr(obj, 'to_dict'):
+        obj = obj.to_dict()
+    elif hasattr(obj, 'to_dict_recursive'):
         obj = obj.to_dict_recursive()
+    elif not isinstance(obj, dict):
+        import json as _json
+        obj = _json.loads(str(obj)) if hasattr(obj, '__str__') else dict(obj)
+    
+    if not isinstance(obj, dict):
+        logging.error(f"Could not convert Stripe object to dict: {type(obj)}")
+        raise ValueError(f"Could not convert Stripe object to dict: {type(obj)}")
+    
+    logging.info(f"Object type after conversion: {type(obj)}")
     
     if event_type == "checkout.session.completed":
         user_id = obj.get("client_reference_id") or obj.get("metadata", {}).get("user_id")
