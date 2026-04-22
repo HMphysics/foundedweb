@@ -123,10 +123,18 @@ async def get_user_plan(user=Depends(get_current_user)):
 # Include the router in the main app
 app.include_router(api_router)
 
+# CORS configuration
+CORS_ORIGINS = [
+    "https://foundedwebb.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=CORS_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
 )
