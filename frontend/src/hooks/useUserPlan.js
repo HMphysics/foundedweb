@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../components/AuthContext';
 
@@ -23,69 +23,80 @@ export function useUserPlan() {
   const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState(FREE_DEFAULT);
   const [loading, setLoading] = useState(true);
-  const hasFetched = useRef(false);
-  const lastUserId = useRef(null);
+  const fetchedForUser = useRef(null);
 
-  useEffect(() => {
-    // Don't fetch while auth is still loading
-    if (authLoading) return;
+  // Extract userId as a stable primitive
+  const userId = user?.id ?? null;
 
-    // No user = free plan, no fetch needed
-    if (!user) {
+  const fetchPlan = useCallback(async () => {
+    if (!userId) {
       setData(FREE_DEFAULT);
       setLoading(false);
-      hasFetched.current = false;
-      lastUserId.current = null;
       return;
     }
 
-    // Prevent duplicate fetches for the same user
-    if (hasFetched.current && lastUserId.current === user.id) {
+    // Already fetched for this user
+    if (fetchedForUser.current === userId) {
       return;
     }
 
-    const fetchPlan = async () => {
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-        
-        if (!token) {
-          setData(FREE_DEFAULT);
-          setLoading(false);
-          return;
-        }
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
 
-        const res = await fetch(`${BACKEND_URL}/api/user/plan`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (res.status === 401) {
-          // Auth error - don't retry, just use free
-          console.warn('useUserPlan: 401 Unauthorized, using free plan');
-          setData(FREE_DEFAULT);
-        } else if (res.ok) {
-          const json = await res.json();
-          setData(json);
-        } else {
-          // Other error - use free
-          setData(FREE_DEFAULT);
-        }
-      } catch (e) {
-        console.error('Error fetching user plan:', e);
+      if (!token) {
         setData(FREE_DEFAULT);
-      } finally {
         setLoading(false);
-        hasFetched.current = true;
-        lastUserId.current = user.id;
+        return;
       }
-    };
 
-    fetchPlan();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, authLoading]); // Only depend on user.id, not the whole user object
+      const res = await fetch(`${BACKEND_URL}/api/user/plan`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.status === 401) {
+        console.warn('useUserPlan: 401 Unauthorized, using free plan');
+        setData(FREE_DEFAULT);
+      } else if (res.ok) {
+        const json = await res.json();
+        setData(json);
+      } else {
+        setData(FREE_DEFAULT);
+      }
+    } catch (e) {
+      console.error('Error fetching user plan:', e);
+      setData(FREE_DEFAULT);
+    } finally {
+      setLoading(false);
+      fetchedForUser.current = userId;
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) {
+      return;
+    }
+
+    // Reset if user logged out
+    if (!userId) {
+      setData(FREE_DEFAULT);
+      setLoading(false);
+      fetchedForUser.current = null;
+      return;
+    }
+
+    // Only fetch if we haven't fetched for this user yet
+    if (fetchedForUser.current !== userId) {
+      fetchPlan();
+    }
+  }, [userId, authLoading, fetchPlan]);
+
+  // Memoize features to prevent unnecessary re-renders
+  const features = useMemo(() => data.features, [data.features]);
 
   const canAccess = useCallback((feature) => {
-    const f = data.features;
+    const f = features;
     if (feature === 'compare') return f.compare;
     if (feature === 'export') return f.export;
     if (feature === 'post_pass') return f.post_pass;
@@ -97,13 +108,13 @@ export function useUserPlan() {
       return f.firms_allowed === 'all' || f.firms_allowed?.includes(firmId);
     }
     return true;
-  }, [data.features]);
+  }, [features]);
 
-  const refresh = useCallback(async () => {
-    hasFetched.current = false;
-    lastUserId.current = null;
+  const refresh = useCallback(() => {
+    fetchedForUser.current = null;
     setLoading(true);
-  }, []);
+    fetchPlan();
+  }, [fetchPlan]);
 
-  return { plan: data.plan, status: data.status, features: data.features, loading, canAccess, refresh };
+  return { plan: data.plan, status: data.status, features, loading, canAccess, refresh };
 }
