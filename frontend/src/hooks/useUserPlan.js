@@ -81,6 +81,7 @@ export function useUserPlan() {
     };
 
     fetchPlan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, authLoading]); // Only depend on user.id, not the whole user object
 
   const canAccess = useCallback((feature) => {
