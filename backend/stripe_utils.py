@@ -29,6 +29,7 @@ def create_checkout_session(user_id: str, user_email: str, plan_type: str, strip
         "line_items": [{"price": price_id, "quantity": 1}],
         "success_url": f"{FRONTEND_URL}/?stripe=success",
         "cancel_url": f"{FRONTEND_URL}/?stripe=cancel",
+        "allow_promotion_codes": True,
         "metadata": {
             "user_id": user_id,
             "plan_type": plan_type,
