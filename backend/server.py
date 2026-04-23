@@ -257,6 +257,8 @@ app.include_router(api_router)
 
 # CORS configuration
 CORS_ORIGINS = [
+    "https://forgeprop.tech",
+    "https://www.forgeprop.tech",
     "https://foundedwebb.vercel.app",
     "http://localhost:3000",
     "http://localhost:3001",
@@ -266,7 +268,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=CORS_ORIGINS,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origin_regex=r"https://(.*\.)?(forgeprop\.tech|vercel\.app)",
     allow_methods=["*"],
     allow_headers=["*"],
 )
