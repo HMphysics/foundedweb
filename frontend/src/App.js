@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, lazy, Suspense, useEffect } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./App.css";
 import { FIRM_DATABASE, STRATEGY_DEFAULTS, resolveFundedRules } from "./firmDatabase";
 import { runMonteCarlo } from "./monteCarlo";
@@ -13,6 +14,9 @@ import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import ChamberTab from "./components/chamber/ChamberTab";
 import StrategyTab from "./components/strategy/StrategyTab";
+import Terms from "./components/legal/Terms";
+import Privacy from "./components/legal/Privacy";
+import Cookies from "./components/legal/Cookies";
 
 // Lazy-loaded heavy tabs
 const OracleTab = lazy(() => import("./components/oracle/OracleTab"));
@@ -28,13 +32,20 @@ const LoadingFallback = ({ message }) => (
 // Root provides the language and auth context
 function App() {
   return (
-    <LangProvider>
-      <AuthProvider>
-        <UserPlanProvider>
-          <AppInner />
-        </UserPlanProvider>
-      </AuthProvider>
-    </LangProvider>
+    <BrowserRouter>
+      <LangProvider>
+        <AuthProvider>
+          <UserPlanProvider>
+            <Routes>
+              <Route path="/" element={<AppInner />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/cookies" element={<Cookies />} />
+            </Routes>
+          </UserPlanProvider>
+        </AuthProvider>
+      </LangProvider>
+    </BrowserRouter>
   );
 }
 

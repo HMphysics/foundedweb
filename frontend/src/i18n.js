@@ -570,6 +570,13 @@ export const TRANSLATIONS = {
     manage_subscription: "gestionar suscripción",
     stripe_loading: "procesando pago...",
     stripe_error: "error al procesar · intenta de nuevo",
+
+    // Legal
+    legal_terms: "términos",
+    legal_privacy: "privacidad",
+    legal_cookies: "cookies",
+    legal_last_updated: "última actualización",
+    legal_back_to_app: "← volver a la app",
   },
   en: {
     app_title: "PROP · FORGE",
@@ -1112,6 +1119,13 @@ export const TRANSLATIONS = {
     manage_subscription: "manage subscription",
     stripe_loading: "processing payment...",
     stripe_error: "error processing · please try again",
+
+    // Legal
+    legal_terms: "terms",
+    legal_privacy: "privacy",
+    legal_cookies: "cookies",
+    legal_last_updated: "last updated",
+    legal_back_to_app: "← back to app",
   },
 };
 
