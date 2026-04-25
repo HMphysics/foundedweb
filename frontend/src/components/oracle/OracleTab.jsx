@@ -13,7 +13,7 @@ export default function OracleTab({
     <div className="pf-tab-body fg-fadein" data-testid="pane-oracle">
       <div className="pf-tab-head">
         <div className="pf-tab-watermark">03</div>
-        <div className="pf-tab-kicker">03 · oracle</div>
+        <div className="pf-tab-kicker">03 · results</div>
         <h2 className="pf-tab-title">{t("tab_03_title")}</h2>
         <div className="pf-tab-hint">{t("tab_03_hint")}</div>
       </div>

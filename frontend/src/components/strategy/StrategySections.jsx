@@ -4,56 +4,44 @@ import { useMemo, useState } from "react";
 import { C } from "../../lib/colors";
 import { fmtMoney } from "../../lib/format";
 import { useT } from "../LangContext";
-import { useUserPlan } from "../UserPlanContext";
 import {
-  Collapsible, NumField, SelectField, ToggleRow,
+  Collapsible, NumField, SelectField, ToggleRow, InfoTooltip,
 } from "../shared/ui";
 import { parseBootstrapData, INSTRUMENT_MAE_RATIOS } from "../../monteCarlo";
 import { resolveFundedRules } from "../../firmDatabase";
 import { exampleAsCSV } from "../../lib/exampleData";
-import UpgradeModal from "../UpgradeModal";
 
 export function ModeSelector({ strategy, setStrategy }) {
   const { t } = useT();
-  const { canAccess } = useUserPlan();
-  const [showUpgrade, setShowUpgrade] = useState(false);
   const mode = strategy.mode || "bootstrap";
-  const bootstrapLocked = !canAccess('bootstrap');
 
   const handleModeChange = (modeId) => {
-    if (modeId === 'bootstrap' && bootstrapLocked) {
-      setShowUpgrade(true);
-      return;
-    }
     setStrategy({ ...strategy, mode: modeId });
   };
 
   return (
-    <>
-      <div className="fg-panel" style={{ padding: 16 }} data-testid="mode-selector">
-        <div style={{ fontFamily: "var(--plex)", fontSize: 11, letterSpacing: 0.2,
-                      textTransform: "uppercase", color: C.steel, fontWeight: 500, marginBottom: 10 }}>
-          § {t("mode_title")}
-        </div>
-        <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-          {[
-            // bootstrap (data-driven) is now first and badged as RECOMMENDED.
-            { id: "bootstrap", label: t("mode_bootstrap"), sub: t("mode_bootstrap_sub"), locked: bootstrapLocked, recommended: true },
-            { id: "simple",    label: t("mode_simple"),    sub: t("mode_simple_sub"), locked: false, recommended: false },
-          ].map(m => {
-            const selected = mode === m.id;
-            return (
+    <div className="fg-panel" style={{ padding: 16 }} data-testid="mode-selector">
+      <div style={{ fontFamily: "var(--plex)", fontSize: 11, letterSpacing: 0.2,
+                    textTransform: "uppercase", color: C.steel, fontWeight: 500, marginBottom: 10 }}>
+        § {t("mode_title")}
+      </div>
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+        {[
+          // bootstrap (data-driven) is first and badged as RECOMMENDED.
+          { id: "bootstrap", label: t("mode_bootstrap"), sub: t("mode_bootstrap_sub"), recommended: true },
+          { id: "simple",    label: t("mode_simple"),    sub: t("mode_simple_sub"), recommended: false },
+        ].map(m => {
+          const selected = mode === m.id;
+          return (
             <label key={m.id} style={{ 
                      flex: 1, minWidth: 200, cursor: "pointer", padding: 12,
-                     border: `1px solid ${selected ? C.cinnabar : m.locked ? C.dust : C.dust}`,
+                     border: `1px solid ${selected ? C.cinnabar : C.dust}`,
                      background: selected ? `${C.cinnabar}10` : "transparent",
-                     opacity: m.locked ? 0.7 : 1,
                      position: 'relative',
                    }}
                    onClick={() => handleModeChange(m.id)}
                    data-testid={`mode-${m.id}`}>
-              {/* RECOMMENDED badge — only for bootstrap, hidden if user cannot access it */}
-              {m.recommended && !m.locked && (
+              {m.recommended && (
                 <span data-testid="mode-recommended-badge" style={{
                   position: 'absolute', top: 8, right: 8,
                   fontSize: 9, fontFamily: "var(--mono)", color: "#7BC47F",
@@ -63,20 +51,6 @@ export function ModeSelector({ strategy, setStrategy }) {
                   ★ {t("mode_recommended")}
                 </span>
               )}
-              {m.locked && (
-                <span style={{
-                  position: 'absolute', top: 8, right: 8,
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  fontSize: 9, fontFamily: "var(--mono)", color: C.brass,
-                  letterSpacing: "0.1em",
-                }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.brass} strokeWidth="2">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
-                  PRO
-                </span>
-              )}
               <input type="radio" name="mode" checked={selected}
                      onChange={() => {}}
                      style={{ accentColor: C.cinnabar, marginRight: 10 }} />
@@ -84,7 +58,6 @@ export function ModeSelector({ strategy, setStrategy }) {
                              color: selected ? C.cinnabar : C.bone, letterSpacing: 0.05 }}>
                 {m.label}
               </span>
-              {/* Green checkmark when this option is the active mode */}
               {selected && (
                 <span data-testid={`mode-${m.id}-check`} style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -102,12 +75,10 @@ export function ModeSelector({ strategy, setStrategy }) {
                 {m.sub}
               </div>
             </label>
-            );
-          })}
-        </div>
+          );
+        })}
       </div>
-      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
-    </>
+    </div>
   );
 }
 
@@ -115,7 +86,8 @@ export function PnLDistributionSection({ strategy, setStrategy, openCsv }) {
   const { t } = useT();
   const mode = strategy.mode || "bootstrap";
   return (
-    <Collapsible title={t("section_pnl_v2")} testId="section-pnl" defaultOpen>
+    <Collapsible title={t("section_pnl_v2")} testId="section-pnl"
+                 defaultOpen description={t("section_pnl_desc")}>
       {mode === "simple" ? (
         <>
           <button className="fg-btn-ghost" onClick={openCsv}
@@ -242,7 +214,9 @@ export function IntradayRiskSection({ strategy, setStrategy }) {
   const maeMode = strategy.maeMode || "estimate";
   const hasBootMae = strategy.mode === "bootstrap" && strategy.bootstrapStats?.hasMae;
   return (
-    <Collapsible title={t("section_mae_v2")} testId="section-mae">
+    <Collapsible title={t("section_mae_v2")} testId="section-mae"
+                 description={t("section_mae_desc")}
+                 badge={t("section_badge_advanced")} badgeColor={C.dust}>
       <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.linen,
                     fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
         {t("mae_help")}
@@ -269,7 +243,10 @@ export function IntradayRiskSection({ strategy, setStrategy }) {
       </div>
       {maeMode === "estimate" && (
         <div>
-          <label className="fg-label" style={{ marginBottom: 6, display: "block" }}>{t("field_instrument")}</label>
+          <label className="fg-label" style={{ marginBottom: 6, display: "inline-flex", alignItems: "center" }}>
+            {t("field_instrument")}
+            <InfoTooltip id="instrument" />
+          </label>
           <select className="fg-select" value={strategy.instrument || "nq"}
                   onChange={(e) => setStrategy({ ...strategy, instrument: e.target.value })}
                   data-testid="strat-instrument">
@@ -317,8 +294,9 @@ export function CostsSection({ strategy, setStrategy }) {
     : cm === "fixed" ? (strategy.dailyCommission || 0) : 0;
   return (
     <Collapsible title={t("section_costs")} testId="section-costs"
-                 badge={daily > 0 ? `−$${daily.toFixed(0)}/day` : null}
-                 badgeColor={daily > 0 ? C.cinnabar : C.brass}>
+                 description={t("section_costs_desc")}
+                 badge={daily > 0 ? `−$${daily.toFixed(0)}/day` : t("section_badge_pro")}
+                 badgeColor={daily > 0 ? C.cinnabar : C.dust}>
       <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.linen,
                     fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
         {t("costs_help")}
@@ -393,7 +371,9 @@ export function BehavioralSection({ strategy, setStrategy }) {
     </div>
   );
   return (
-    <Collapsible title={t("section_behavioral")} testId="section-behavioral">
+    <Collapsible title={t("section_behavioral")} testId="section-behavioral"
+                 description={t("section_behavioral_desc")}
+                 badge={t("section_badge_pro")} badgeColor={C.dust}>
       <div className="fg-label" style={{ marginBottom: 8 }}>{t("behav_post_title")}</div>
       <Radio name="post-mode" testPrefix="behav-post"
              value={postMode} onChange={v => setStrategy({ ...strategy, postTargetMode: v })}
@@ -472,7 +452,9 @@ export function PostPassSection({ strategy, setStrategy, firmId, plan }) {
 
   return (
     <Collapsible title={t("section_postpass")} testId="section-postpass"
-                 badge={enabled ? "ON" : "OFF"} badgeColor={enabled ? C.brass : C.haze}>
+                 description={t("section_postpass_desc")}
+                 badge={enabled ? "ON" : t("section_badge_pro")}
+                 badgeColor={enabled ? C.brass : C.dust}>
       {/* Toggle */}
       <ToggleRow label={t("postpass_toggle")} on={enabled}
                  onToggle={(v) => setStrategy({ ...strategy, postPassEnabled: v })}

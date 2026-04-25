@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C } from "../../lib/colors";
 import { useT } from "../LangContext";
 import { useUserPlan } from "../UserPlanContext";
-import { SectionBar } from "../shared/ui";
+import { SectionBar, InfoTooltip } from "../shared/ui";
 import AccountEditor from "../account/AccountEditor";
 import CompareRack from "../compare/CompareRack";
 import PaywallGate from "../PaywallGate";
@@ -64,6 +64,21 @@ export default function StrategyTab({
             {/* Left column: Strategy sections */}
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <ModeSelector strategy={strategy} setStrategy={setStrategy} />
+              {/* Quick Start panel — explains that the rest is optional */}
+              <div data-testid="quick-start-panel"
+                   style={{
+                     padding: "10px 14px",
+                     borderLeft: `2px solid ${C.brass}`,
+                     background: `${C.brass}0A`,
+                     fontFamily: "var(--plex)", fontSize: 12, lineHeight: 1.55,
+                     color: C.linen,
+                   }}>
+                <div style={{ color: C.brass, fontWeight: 600, fontSize: 10.5, letterSpacing: 0.18,
+                              textTransform: "uppercase", marginBottom: 4 }}>
+                  ★ {t("quick_start_title")}
+                </div>
+                <div>{t("quick_start_body")}</div>
+              </div>
               <PnLDistributionSection strategy={strategy} setStrategy={setStrategy}
                                       openCsv={() => setShowCsvModal(true)} />
               <IntradayRiskSection strategy={strategy} setStrategy={setStrategy} />
@@ -109,7 +124,10 @@ export default function StrategyTab({
               <div className="fg-panel" style={{ padding: 18 }}>
                 <SectionBar label={t("section_sim")} />
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <label className="fg-label">{t("field_n_sims")}</label>
+                  <label className="fg-label" style={{ display: "inline-flex", alignItems: "center" }}>
+                    {t("field_n_sims")}
+                    <InfoTooltip id="n_sims" />
+                  </label>
                   <span style={{ color: C.brass, fontFamily: "var(--mono)", fontSize: 13 }}>
                     {nSims.toLocaleString("en-US")}
                   </span>

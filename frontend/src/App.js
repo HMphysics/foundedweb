@@ -278,7 +278,7 @@ function AppInner() {
       )}
 
       {activeTab === "oracle" && (
-        <Suspense fallback={<LoadingFallback message="consulting the oracle..." />}>
+        <Suspense fallback={<LoadingFallback message="loading results..." />}>
           <OracleTab
             results={results} loading={loading}
             planDraft={planDraft} selectedFirm={selectedFirm} isModified={isModified}

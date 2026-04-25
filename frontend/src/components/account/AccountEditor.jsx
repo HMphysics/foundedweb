@@ -7,8 +7,8 @@ export default function AccountEditor({ draft, onChange, onPhase2Change, unlocke
   const d = draft;
   return (
     <div>
-      <NumField label={t("field_capital")} prefix="$" value={d.capital} onChange={v => onChange({ capital: v })} disabled={!unlocked} testId="acc-capital" />
-      <NumField label={t("field_target")}  prefix="$" value={d.target}  onChange={v => onChange({ target: v })}  disabled={!unlocked} testId="acc-target" />
+      <NumField label={t("field_capital")} prefix="$" value={d.capital} onChange={v => onChange({ capital: v })} disabled={!unlocked} testId="acc-capital" tip="capital" />
+      <NumField label={t("field_target")}  prefix="$" value={d.target}  onChange={v => onChange({ target: v })}  disabled={!unlocked} testId="acc-target" tip="target" />
       <SelectField label={t("field_dd_type")} value={d.ddType} disabled={!unlocked} tip="dd_type"
                    options={[
                      { value: "trailing_eod",      label: t("dd_type_trailing_eod") },
@@ -16,7 +16,7 @@ export default function AccountEditor({ draft, onChange, onPhase2Change, unlocke
                      { value: "static",            label: t("dd_type_static") },
                    ]}
                    onChange={v => onChange({ ddType: v })} testId="acc-ddtype" />
-      <NumField label={t("field_dd_value")} prefix="$" value={d.ddValue} onChange={v => onChange({ ddValue: v })} disabled={!unlocked} testId="acc-ddvalue" />
+      <NumField label={t("field_dd_value")} prefix="$" value={d.ddValue} onChange={v => onChange({ ddValue: v })} disabled={!unlocked} testId="acc-ddvalue" tip="dd_value" />
       {d.ddType !== "static" && (
         <SelectField label={t("field_floor_lock")} value={d.floorLock || "at_capital"} disabled={!unlocked} tip="floor_lock"
                      options={[
@@ -41,7 +41,7 @@ export default function AccountEditor({ draft, onChange, onPhase2Change, unlocke
       <ToggleRow label={t("field_consistency")} on={d.consistency !== null && d.consistency !== undefined} tip="consistency"
                  onToggle={v => onChange({ consistency: v ? (d.consistency ?? 0.3) : null })}
                  testId="acc-cons-toggle">
-        <NumField label={t("field_consistency_pct")} value={d.consistency} step={0.01} onChange={v => onChange({ consistency: v })} disabled={!unlocked} testId="acc-consvalue" />
+        <NumField label={t("field_consistency_pct")} value={d.consistency} step={0.01} onChange={v => onChange({ consistency: v })} disabled={!unlocked} testId="acc-consvalue" tip="consistency_pct" />
         <SelectField label={t("field_consistency_type")} value={d.consistencyType || "vs_total"} disabled={!unlocked}
                      options={[
                        { value: "vs_total",  label: t("cons_vs_total") },
@@ -76,7 +76,7 @@ export default function AccountEditor({ draft, onChange, onPhase2Change, unlocke
         </div>
       )}
       <div className="fg-row-divider" />
-      <NumField label={t("field_fee")} prefix="$" value={d.fee} onChange={v => onChange({ fee: v })} disabled={!unlocked} testId="acc-fee" />
+      <NumField label={t("field_fee")} prefix="$" value={d.fee} onChange={v => onChange({ fee: v })} disabled={!unlocked} testId="acc-fee" tip="fee" />
       <NumField label={t("field_activation_fee")} prefix="$" value={d.activationFee || 0} onChange={v => onChange({ activationFee: v ?? 0 })} disabled={!unlocked} testId="acc-activation" />
       <SelectField label={t("field_fee_type")} value={d.feeType || "one_time"} disabled={!unlocked}
                    options={[
@@ -84,7 +84,7 @@ export default function AccountEditor({ draft, onChange, onPhase2Change, unlocke
                      { value: "monthly",  label: t("fee_monthly") },
                    ]}
                    onChange={v => onChange({ feeType: v })} testId="acc-feetype" />
-      <NumField label={t("field_profit_split")} value={d.profitSplit} step={0.01} onChange={v => onChange({ profitSplit: v })} disabled={!unlocked} testId="acc-split" />
+      <NumField label={t("field_profit_split")} value={d.profitSplit} step={0.01} onChange={v => onChange({ profitSplit: v })} disabled={!unlocked} testId="acc-split" tip="profit_split" />
       {onResetToPreset && (
         <button className="fg-btn-ghost" onClick={onResetToPreset} data-testid="btn-reset-preset"
                 style={{ marginTop: 10, width: "100%" }}>{t("btn_reset_preset")}</button>

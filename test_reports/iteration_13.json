@@ -16,7 +16,7 @@
         "issue": "External preview URL shows 'Preview Unavailable!!!' instead of the app",
         "impact": "App not accessible via public URL, only works on localhost:3000",
         "fix_priority": "HIGH",
-        "affected_url": "https://679243-d7a5ac68-d3e7-4e58-a95b-c0f6f6a88a69.preview.emergentagent.com"
+        "affected_url": "https://noir-archive-2.preview.emergentagent.com"
       }
     ],
     "ui_bugs": [],

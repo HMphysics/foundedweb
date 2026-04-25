@@ -20,7 +20,7 @@ export default function CustomCard({ selected, onClick }) {
         <div>
           <div style={{ fontFamily: "var(--plex)", fontSize: 10.5, letterSpacing: 0.24,
                         fontWeight: 500, color: C.cinnabar, marginBottom: 6, textTransform: "uppercase" }}>
-            · vocatio propria
+            · custom build
           </div>
           <div style={{ fontFamily: "var(--fraunces)", fontVariationSettings: "'opsz' 144, 'WONK' 1",
                         fontWeight: 900, color: C.bone, fontSize: 22, letterSpacing: "-0.02em",

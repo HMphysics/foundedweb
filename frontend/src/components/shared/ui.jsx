@@ -143,7 +143,7 @@ export function Warn({ prefix = "//", children, color = C.brass }) {
   );
 }
 
-export function Collapsible({ title, testId, badge, badgeColor = C.brass, defaultOpen = false, children }) {
+export function Collapsible({ title, testId, badge, badgeColor = C.brass, defaultOpen = false, description, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="fg-panel" style={{ padding: 0 }} data-testid={testId}>
@@ -164,6 +164,15 @@ export function Collapsible({ title, testId, badge, badgeColor = C.brass, defaul
           )}
         </span>
       </button>
+      {description && (
+        <div style={{ padding: "0 18px 10px 36px", marginTop: -6,
+                      color: C.steel, fontFamily: "var(--plex)", fontSize: 12,
+                      fontStyle: "italic", fontWeight: 300, lineHeight: 1.5,
+                      letterSpacing: 0.02 }}
+             data-testid={`${testId}-description`}>
+          {description}
+        </div>
+      )}
       {open && <div style={{ padding: "0 18px 18px" }}>{children}</div>}
     </div>
   );

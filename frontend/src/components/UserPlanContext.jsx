@@ -9,7 +9,7 @@ const FREE_DEFAULT = {
   status: 'active',
   features: {
     firms_allowed: ['apex_eod', 'topstep', 'ftmo'],
-    modes: ['simple'],
+    modes: ['simple', 'bootstrap'],
     compare: false,
     export: false,
     post_pass: false,

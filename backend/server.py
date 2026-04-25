@@ -32,7 +32,7 @@ api_router = APIRouter(prefix="/api")
 PLAN_FEATURES = {
     "free": {
         "firms_allowed": ["apex_eod", "topstep", "ftmo"],
-        "modes": ["simple"],
+        "modes": ["simple", "bootstrap"],
         "compare": False,
         "export": False,
         "post_pass": False,

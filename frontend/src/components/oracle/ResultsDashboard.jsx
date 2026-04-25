@@ -6,6 +6,7 @@ import { C } from "../../lib/colors";
 import { fmtMoney, fmtPct, fmtInt } from "../../lib/format";
 import { useT } from "../LangContext";
 import { CTooltip, ChartTitle, EmptyChart } from "../charting";
+import { InfoTooltip } from "../shared/ui";
 import FundedLifecyclePanel from "./FundedLifecyclePanel";
 
 export default function ResultsDashboard({ results, plan }) {
@@ -34,22 +35,38 @@ export default function ResultsDashboard({ results, plan }) {
       {/* Hero KPI row */}
       <div className="oracle-hero-kpis" data-testid="oracle-revelation">
         <div className={`oracle-ppass ${passing ? "passing" : "failing"}`} data-testid="kpi-ppass">
-          <div className="lbl">{t("kpi_p_pass")}</div>
+          <div className="lbl" style={{ display: "inline-flex", alignItems: "center" }}>
+            {t("kpi_p_pass")}<InfoTooltip id="break_even" />
+          </div>
           <div className="big">{fmtPct(r.pPass)}</div>
           <div className="rule" />
           <div className="sub">{t("kpi_p_pass_sub", { x: (r.ruinaMin * 100).toFixed(1) })}</div>
+          <div className="kpi-help" style={{ color: C.steel, fontStyle: "italic", fontSize: 11.5,
+                                              marginTop: 6, lineHeight: 1.45, fontFamily: "var(--plex)" }}>
+            {t("kpi_p_pass_help")}
+          </div>
         </div>
         <div className="oracle-secondary" data-testid="kpi-ev">
-          <div className="lbl">{t("kpi_ev")}</div>
+          <div className="lbl" style={{ display: "inline-flex", alignItems: "center" }}>
+            {t("kpi_ev")}<InfoTooltip id="ev" />
+          </div>
           <div className="val" style={{ color: evColor }}>
             {(r.ev >= 0 ? "+" : "-") + fmtMoney(Math.abs(r.ev))}
           </div>
           <div className="sub">{t("kpi_ev_sub", { x: fmtMoney(r.avgCost) })}</div>
+          <div className="kpi-help" style={{ color: C.steel, fontStyle: "italic", fontSize: 11.5,
+                                              marginTop: 6, lineHeight: 1.45, fontFamily: "var(--plex)" }}>
+            {t("kpi_ev_help")}
+          </div>
         </div>
         <div className="oracle-secondary" data-testid="kpi-pdd">
           <div className="lbl">{t("kpi_p_dd")}</div>
           <div className="val" style={{ color: C.cinnabar }}>{fmtPct(r.pDD)}</div>
           <div className="sub">{t("kpi_p_dd_sub")}</div>
+          <div className="kpi-help" style={{ color: C.steel, fontStyle: "italic", fontSize: 11.5,
+                                              marginTop: 6, lineHeight: 1.45, fontFamily: "var(--plex)" }}>
+            {t("kpi_p_dd_help")}
+          </div>
         </div>
       </div>
 
@@ -79,7 +96,9 @@ export default function ResultsDashboard({ results, plan }) {
             {r.nPass > 0 ? `${Math.round(r.p90Pass)}d` : "—"}
           </span>
           <span className="sub">{t("kpi_p90_days_sub")}</span></div>
-        <div data-testid="kpi-br95"><span className="lbl">{t("kpi_bankroll")}</span>
+        <div data-testid="kpi-br95"><span className="lbl" style={{ display: "inline-flex", alignItems: "center" }}>
+            {t("kpi_bankroll")}<InfoTooltip id="bankroll" />
+          </span>
           <span className="val" style={{ color: C.brass }}>
             {r.passEssentiallyZero ? "—" : fmtMoney(r.br95)}
           </span>
