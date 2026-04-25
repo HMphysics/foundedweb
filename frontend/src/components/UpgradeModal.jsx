@@ -13,14 +13,14 @@ const plans = [
   {
     id: 'pro',
     features: ['All 21 firms', 'Bootstrap mode', 'Export JSON + PNG', 'Compare up to 3', 'Post-pass lifecycle', 'Commissions & behavioral'],
-    price: '€12/month',
+    price: '€31/month',
     cta: 'paywall_upgrade_monthly',
     planType: 'pro_monthly',
   },
   {
     id: 'lifetime',
     features: ['Everything in Pro', 'Unlimited saved configs', 'Lifetime access', 'Priority support'],
-    price: '€79 one-time',
+    price: '€199 one-time',
     cta: 'paywall_upgrade_lifetime',
     planType: 'lifetime',
   },
@@ -161,6 +161,92 @@ export default function UpgradeModal({ onClose }) {
               )}
             </div>
           ))}
+        </div>
+
+        <div style={{
+          marginTop: 24,
+          paddingTop: 20,
+          borderTop: `1px dashed ${C.dust}`,
+        }} data-testid="coming-soon-section">
+          <div style={{
+            fontSize: 11,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            color: C.brass,
+            fontWeight: 600,
+            marginBottom: 12,
+            fontFamily: 'var(--plex)',
+          }}>
+            {t('coming_soon_title')}
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: 10,
+          }}>
+            {[
+              { key: 'lab',       badge: 'Q2' },
+              { key: 'templates', badge: 'Q2' },
+              { key: 'save',      badge: 'soon' },
+              { key: 'mobile',    badge: 'later' },
+            ].map(item => (
+              <div key={item.key}
+                   data-testid={`coming-${item.key}`}
+                   style={{
+                     padding: 12,
+                     background: C.archive,
+                     border: `1px solid ${C.dust}`,
+                     display: 'flex',
+                     alignItems: 'flex-start',
+                     justifyContent: 'space-between',
+                     gap: 8,
+                   }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 12,
+                    color: C.bone,
+                    fontWeight: 500,
+                    fontFamily: 'var(--plex)',
+                    marginBottom: 4,
+                  }}>
+                    {t(`coming_${item.key}_title`)}
+                  </div>
+                  <div style={{
+                    fontSize: 11,
+                    color: C.linen,
+                    fontStyle: 'italic',
+                    fontFamily: 'var(--plex)',
+                    lineHeight: 1.4,
+                  }}>
+                    {t(`coming_${item.key}_desc`)}
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: 9,
+                  color: C.brass,
+                  fontFamily: 'var(--mono)',
+                  letterSpacing: '0.1em',
+                  padding: '2px 6px',
+                  border: `1px solid ${C.brass}`,
+                  flexShrink: 0,
+                }}>
+                  {item.badge}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{
+            marginTop: 12,
+            fontSize: 11,
+            color: C.smoke,
+            fontStyle: 'italic',
+            fontFamily: 'var(--plex)',
+            textAlign: 'center',
+          }}>
+            {t('coming_soon_footer')}
+          </div>
         </div>
 
         <p style={{

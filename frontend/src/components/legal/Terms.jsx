@@ -96,7 +96,7 @@ export default function Terms() {
 
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>4. Subscription Plans and Payments</h2>
-          <P>Prop Forge offers: Free (no cost), Pro Monthly (€12/month), and Lifetime (€79 one-time payment). Payments are processed through Stripe.</P>
+          <P>Prop Forge offers: Free (no cost), Pro Monthly (€31/month), and Lifetime (€199 one-time payment). Payments are processed through Stripe.</P>
           <P>The Monthly subscription renews automatically until cancelled. You can cancel anytime from the customer portal. Cancellation takes effect at the end of the current billing period.</P>
         </div>
 

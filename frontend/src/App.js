@@ -151,6 +151,11 @@ function AppInner() {
     setPlanDraft(prev => ({ ...prev, phase2: { ...(prev.phase2 || {}), ...patch } }));
 
   // ─── Simulation handlers ───
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleRun = () => {
     if (!planDraft) return;
     setLoading(true);
@@ -235,7 +240,7 @@ function AppInner() {
             <button key={tab.id}
                     className={`pf-tab ${activeTab === tab.id ? "active" : ""}`}
                     data-testid={`tab-${tab.id}`}
-                    onClick={() => setActiveTab(tab.id)}>
+                    onClick={() => handleTabClick(tab.id)}>
               <span className="num">{tab.num}</span>{tab.label}
             </button>
           ))}

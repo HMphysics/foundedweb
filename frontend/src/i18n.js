@@ -585,9 +585,21 @@ export const TRANSLATIONS = {
     paywall_locked_firm: "firma bloqueada en plan free",
     paywall_upgrade_modal_title: "desbloquea prop forge",
     paywall_upgrade_modal_body: "con el plan pro accedes a las 21 firmas, modo bootstrap, exportar, comparar y más",
-    paywall_upgrade_monthly: "pro · 12€/mes",
-    paywall_upgrade_lifetime: "lifetime · 79€ pago único",
+    paywall_upgrade_monthly: "pro · 31€/mes",
+    paywall_upgrade_lifetime: "lifetime · 199€ pago único",
     paywall_close: "cerrar",
+
+    // Coming soon (UpgradeModal footer)
+    coming_soon_title: "próximamente",
+    coming_lab_title: "strategy lab",
+    coming_lab_desc: "diseña y backtestea tu estrategia con datos históricos. integrado con prop forge.",
+    coming_templates_title: "plantillas tradingview",
+    coming_templates_desc: "scripts pinescript listos: VWAP reclaim, NY open breakout, opening range...",
+    coming_save_title: "guardar configuraciones",
+    coming_save_desc: "guarda y comparte tus simulaciones favoritas con un link.",
+    coming_mobile_title: "app móvil",
+    coming_mobile_desc: "consulta probabilidades desde tu móvil. notificaciones push.",
+    coming_soon_footer: "los planes pro y lifetime incluyen acceso a todas estas features cuando se lancen.",
 
     // Stripe
     stripe_success_title: "¡pago recibido!",
@@ -1161,9 +1173,21 @@ export const TRANSLATIONS = {
     paywall_locked_firm: "firm locked on free plan",
     paywall_upgrade_modal_title: "unlock prop forge",
     paywall_upgrade_modal_body: "the pro plan unlocks all 21 firms, bootstrap mode, export, compare and more",
-    paywall_upgrade_monthly: "pro · €12/month",
-    paywall_upgrade_lifetime: "lifetime · €79 one-time",
+    paywall_upgrade_monthly: "pro · €31/month",
+    paywall_upgrade_lifetime: "lifetime · €199 one-time",
     paywall_close: "close",
+
+    // Coming soon (UpgradeModal footer)
+    coming_soon_title: "coming soon",
+    coming_lab_title: "strategy lab",
+    coming_lab_desc: "design and backtest your strategy with historical data. integrated with prop forge.",
+    coming_templates_title: "tradingview templates",
+    coming_templates_desc: "ready-made pinescript: VWAP reclaim, NY open breakout, opening range...",
+    coming_save_title: "save configurations",
+    coming_save_desc: "save and share your favorite simulations with a link.",
+    coming_mobile_title: "mobile app",
+    coming_mobile_desc: "check probabilities from your phone. push notifications.",
+    coming_soon_footer: "pro and lifetime plans include access to all these features when launched.",
 
     // Stripe
     stripe_success_title: "payment received!",
