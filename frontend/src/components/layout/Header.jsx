@@ -135,7 +135,7 @@ export default function Header() {
             )}
 
             <div className="pf-meta">
-              {totalFirms} chambers <span className="acc">·</span> {totalPlans} plans
+              {totalFirms} firms <span className="acc">·</span> {totalPlans} plans
             </div>
           </div>
         </div>

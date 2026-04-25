@@ -416,7 +416,7 @@ export function resolveFundedRules(plan, firmId, userOverride = {}) {
 
 export const STRATEGY_DEFAULTS = {
   // Mode
-  mode:      "simple",        // "simple" | "bootstrap"
+  mode:      "bootstrap",     // "simple" | "bootstrap" — bootstrap is default (data-driven)
   bootstrapData: [],
   bootstrapStats: null,
 

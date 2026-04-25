@@ -35,7 +35,7 @@ export default function ChamberTab({
       <div className="pf-tab-body fg-fadein" data-testid="pane-chamber">
         <div className="pf-tab-head">
           <div className="pf-tab-watermark">01</div>
-          <div className="pf-tab-kicker">01 · chamber</div>
+          <div className="pf-tab-kicker">01 · firms</div>
           <h2 className="pf-tab-title">{t("tab_01_title")}</h2>
           <div className="pf-tab-hint">{t("tab_01_hint")}</div>
         </div>

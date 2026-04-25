@@ -10,13 +10,14 @@ import {
 } from "../shared/ui";
 import { parseBootstrapData, INSTRUMENT_MAE_RATIOS } from "../../monteCarlo";
 import { resolveFundedRules } from "../../firmDatabase";
+import { exampleAsCSV } from "../../lib/exampleData";
 import UpgradeModal from "../UpgradeModal";
 
 export function ModeSelector({ strategy, setStrategy }) {
   const { t } = useT();
   const { canAccess } = useUserPlan();
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const mode = strategy.mode || "simple";
+  const mode = strategy.mode || "bootstrap";
   const bootstrapLocked = !canAccess('bootstrap');
 
   const handleModeChange = (modeId) => {
@@ -36,29 +37,37 @@ export function ModeSelector({ strategy, setStrategy }) {
         </div>
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
           {[
-            { id: "simple",    label: t("mode_simple"),    sub: t("mode_simple_sub"), locked: false },
-            { id: "bootstrap", label: t("mode_bootstrap"), sub: t("mode_bootstrap_sub"), locked: bootstrapLocked },
-          ].map(m => (
+            // bootstrap (data-driven) is now first and badged as RECOMMENDED.
+            { id: "bootstrap", label: t("mode_bootstrap"), sub: t("mode_bootstrap_sub"), locked: bootstrapLocked, recommended: true },
+            { id: "simple",    label: t("mode_simple"),    sub: t("mode_simple_sub"), locked: false, recommended: false },
+          ].map(m => {
+            const selected = mode === m.id;
+            return (
             <label key={m.id} style={{ 
                      flex: 1, minWidth: 200, cursor: "pointer", padding: 12,
-                     border: `1px solid ${mode === m.id ? C.cinnabar : m.locked ? C.dust : C.dust}`,
-                     background: mode === m.id ? `${C.cinnabar}10` : "transparent",
+                     border: `1px solid ${selected ? C.cinnabar : m.locked ? C.dust : C.dust}`,
+                     background: selected ? `${C.cinnabar}10` : "transparent",
                      opacity: m.locked ? 0.7 : 1,
                      position: 'relative',
                    }}
                    onClick={() => handleModeChange(m.id)}
                    data-testid={`mode-${m.id}`}>
+              {/* RECOMMENDED badge — only for bootstrap, hidden if user cannot access it */}
+              {m.recommended && !m.locked && (
+                <span data-testid="mode-recommended-badge" style={{
+                  position: 'absolute', top: 8, right: 8,
+                  fontSize: 9, fontFamily: "var(--mono)", color: "#7BC47F",
+                  letterSpacing: "0.12em", padding: "2px 6px",
+                  border: "1px solid #7BC47F", borderRadius: 2,
+                }}>
+                  ★ {t("mode_recommended")}
+                </span>
+              )}
               {m.locked && (
                 <span style={{
-                  position: 'absolute',
-                  top: 8,
-                  right: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  fontSize: 9,
-                  fontFamily: "var(--mono)",
-                  color: C.brass,
+                  position: 'absolute', top: 8, right: 8,
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  fontSize: 9, fontFamily: "var(--mono)", color: C.brass,
                   letterSpacing: "0.1em",
                 }}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.brass} strokeWidth="2">
@@ -68,19 +77,33 @@ export function ModeSelector({ strategy, setStrategy }) {
                   PRO
                 </span>
               )}
-              <input type="radio" name="mode" checked={mode === m.id}
+              <input type="radio" name="mode" checked={selected}
                      onChange={() => {}}
                      style={{ accentColor: C.cinnabar, marginRight: 10 }} />
               <span style={{ fontFamily: "var(--plex)", fontWeight: 600, fontSize: 13,
-                             color: mode === m.id ? C.cinnabar : C.bone, letterSpacing: 0.05 }}>
+                             color: selected ? C.cinnabar : C.bone, letterSpacing: 0.05 }}>
                 {m.label}
               </span>
+              {/* Green checkmark when this option is the active mode */}
+              {selected && (
+                <span data-testid={`mode-${m.id}-check`} style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  marginLeft: 8, width: 16, height: 16, borderRadius: 8,
+                  background: "#7BC47F",
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+                       stroke="#0E0E0E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </span>
+              )}
               <div style={{ marginTop: 6, color: C.linen, fontSize: 12, fontStyle: "italic",
                             fontFamily: "var(--plex)", fontWeight: 300, lineHeight: 1.45 }}>
                 {m.sub}
               </div>
             </label>
-          ))}
+            );
+          })}
         </div>
       </div>
       {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
@@ -90,7 +113,7 @@ export function ModeSelector({ strategy, setStrategy }) {
 
 export function PnLDistributionSection({ strategy, setStrategy, openCsv }) {
   const { t } = useT();
-  const mode = strategy.mode || "simple";
+  const mode = strategy.mode || "bootstrap";
   return (
     <Collapsible title={t("section_pnl_v2")} testId="section-pnl" defaultOpen>
       {mode === "simple" ? (
@@ -137,6 +160,11 @@ export function BootstrapInput({ strategy, setStrategy }) {
       setRaw(text); parse(text);
     } catch { setErrors(["Clipboard access denied"]); }
   };
+  const loadExample = () => {
+    const text = exampleAsCSV();
+    setRaw(text);
+    parse(text);
+  };
   return (
     <div data-testid="bootstrap-input">
       <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.linen,
@@ -151,13 +179,16 @@ export function BootstrapInput({ strategy, setStrategy }) {
         onChange={(e) => { setRaw(e.target.value); parse(e.target.value); }}
         data-testid="bootstrap-textarea"
       />
-      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
         <button className="fg-btn-ghost" onClick={() => parse(raw)} data-testid="bootstrap-parse"
-                style={{ flex: 1 }}>
+                style={{ flex: 1, minWidth: 120 }}>
           {t("bootstrap_parse")}
         </button>
         <button className="fg-btn-ghost" onClick={pasteClip} data-testid="bootstrap-paste">
           {t("bootstrap_paste_clip")}
+        </button>
+        <button className="fg-btn-ghost" onClick={loadExample} data-testid="bootstrap-load-example">
+          {t("bootstrap_load_example")}
         </button>
       </div>
 
