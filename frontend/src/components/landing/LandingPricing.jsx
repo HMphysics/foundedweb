@@ -1,4 +1,4 @@
-// Pricing section — three tiers (Free, Pro highlighted, Lifetime).
+// Pricing section — three tiers (Free, Pro highlighted, Annual).
 import { useT } from "../LangContext";
 import { C } from "../../lib/colors";
 
@@ -147,15 +147,15 @@ export default function LandingPricing({ onCTAClick }) {
           featured
         />
         <PricingCard
-          tier="lifetime"
+          tier="annual"
           price="199€"
-          priceSub={t("landing_price_one_time")}
+          priceSub={t("landing_price_yearly")}
           features={[
-            t("landing_lifetime_feat_1"),
-            t("landing_lifetime_feat_2"),
-            t("landing_lifetime_feat_3"),
+            t("landing_annual_feat_1"),
+            t("landing_annual_feat_2"),
+            t("landing_annual_feat_3"),
           ]}
-          ctaLabel={t("landing_lifetime_cta")}
+          ctaLabel={t("landing_annual_cta")}
           onCTAClick={onCTAClick}
         />
       </div>

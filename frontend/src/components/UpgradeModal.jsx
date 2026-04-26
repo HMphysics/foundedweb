@@ -18,11 +18,11 @@ const plans = [
     planType: 'pro_monthly',
   },
   {
-    id: 'lifetime',
-    features: ['Everything in Pro', 'Unlimited saved configs', 'Lifetime access', 'Priority support'],
-    price: '€199 one-time',
-    cta: 'paywall_upgrade_lifetime',
-    planType: 'lifetime',
+    id: 'annual',
+    features: ['Everything in Pro', 'Up to 100 saved configs', 'Annual billing', 'Priority support'],
+    price: '€199/year',
+    cta: 'paywall_upgrade_annual',
+    planType: 'annual',
   },
 ];
 
@@ -104,7 +104,7 @@ export default function UpgradeModal({ onClose }) {
                 fontFamily: "'IBM Plex Sans', sans-serif",
                 fontSize: 13,
                 fontWeight: 600,
-                color: plan.id === 'pro' ? C.brass : plan.id === 'lifetime' ? C.cinnabar : C.smoke,
+                color: plan.id === 'pro' ? C.brass : plan.id === 'annual' ? C.cinnabar : C.smoke,
                 letterSpacing: '0.15em',
                 marginBottom: 12,
                 textTransform: 'uppercase',

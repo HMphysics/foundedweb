@@ -4,22 +4,22 @@ import stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 PRICE_PRO = os.getenv("STRIPE_PRICE_PRO")
-PRICE_LIFETIME = os.getenv("STRIPE_PRICE_LIFETIME")
+PRICE_ANNUAL = os.getenv("STRIPE_PRICE_ANNUAL")
 WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 
 def create_checkout_session(user_id: str, user_email: str, plan_type: str, stripe_customer_id: str = None):
     """
-    plan_type: 'pro_monthly' or 'lifetime'
+    plan_type: 'pro_monthly' or 'annual' (both are recurring subscriptions).
     Returns the Checkout Session URL.
     """
     if plan_type == "pro_monthly":
         price_id = PRICE_PRO
         mode = "subscription"
-    elif plan_type == "lifetime":
-        price_id = PRICE_LIFETIME
-        mode = "payment"
+    elif plan_type == "annual":
+        price_id = PRICE_ANNUAL
+        mode = "subscription"
     else:
         raise ValueError(f"Unknown plan_type: {plan_type}")
 
@@ -41,8 +41,6 @@ def create_checkout_session(user_id: str, user_email: str, plan_type: str, strip
         params["customer"] = stripe_customer_id
     else:
         params["customer_email"] = user_email
-        if mode == "payment":
-            params["customer_creation"] = "always"
 
     session = stripe.checkout.Session.create(**params)
     return session.url

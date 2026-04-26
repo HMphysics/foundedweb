@@ -33,7 +33,7 @@ function PlanBadge({ plan }) {
   const colors = {
     free: C.smoke,
     pro: C.brass,
-    lifetime: C.cinnabar,
+    annual: C.cinnabar,
   };
   return (
     <span 

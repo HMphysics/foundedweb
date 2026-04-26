@@ -581,12 +581,13 @@ export const TRANSLATIONS = {
     paywall_upgrade_cta: "desbloquear",
     paywall_free_badge: "free",
     paywall_pro_badge: "pro",
-    paywall_lifetime_badge: "lifetime",
+    paywall_annual_badge: "anual",
     paywall_locked_firm: "firma bloqueada en plan free",
     paywall_upgrade_modal_title: "desbloquea prop forge",
     paywall_upgrade_modal_body: "con el plan pro accedes a las 21 firmas, modo bootstrap, exportar, comparar y más",
     paywall_upgrade_monthly: "pro · 31€/mes",
-    paywall_upgrade_lifetime: "lifetime · 199€ pago único",
+    paywall_upgrade_annual: "Anual · 199€/año",
+    paywall_period_yearly: "/año",
     paywall_close: "cerrar",
 
     // Coming soon (UpgradeModal footer)
@@ -599,7 +600,7 @@ export const TRANSLATIONS = {
     coming_save_desc: "Guarda y comparte tus simulaciones favoritas con un link.",
     coming_mobile_title: "App móvil",
     coming_mobile_desc: "Consulta probabilidades desde tu móvil. Notificaciones push.",
-    coming_soon_footer: "Los planes Pro y Lifetime incluyen acceso a todas estas features cuando se lancen.",
+    coming_soon_footer: "Los planes Pro y Anual incluyen acceso a todas estas features cuando se lancen.",
 
     // Stripe
     stripe_success_title: "¡Pago recibido!",
@@ -647,10 +648,11 @@ export const TRANSLATIONS = {
     landing_pro_feat_5: "Exportar resultados (json, png)",
     landing_pro_feat_6: "Guardar hasta 10 configuraciones",
     landing_pro_cta: "Elegir Pro",
-    landing_lifetime_feat_1: "Todo lo de Pro, para siempre",
-    landing_lifetime_feat_2: "Configuraciones ilimitadas",
-    landing_lifetime_feat_3: "Acceso a futuras features cuando salgan",
-    landing_lifetime_cta: "Elegir Lifetime",
+    landing_price_yearly: "/año",
+    landing_annual_feat_1: "Todo lo de Pro",
+    landing_annual_feat_2: "Hasta 100 configuraciones guardadas",
+    landing_annual_feat_3: "Acceso a futuras features cuando salgan",
+    landing_annual_cta: "Elegir Anual",
 
     landing_faq_title: "Preguntas frecuentes",
     landing_faq_what_q: "¿Qué es Prop Forge?",
@@ -1222,12 +1224,13 @@ export const TRANSLATIONS = {
     paywall_upgrade_cta: "unlock",
     paywall_free_badge: "free",
     paywall_pro_badge: "pro",
-    paywall_lifetime_badge: "lifetime",
+    paywall_annual_badge: "annual",
     paywall_locked_firm: "firm locked on free plan",
     paywall_upgrade_modal_title: "unlock prop forge",
     paywall_upgrade_modal_body: "the pro plan unlocks all 21 firms, bootstrap mode, export, compare and more",
     paywall_upgrade_monthly: "pro · €31/month",
-    paywall_upgrade_lifetime: "lifetime · €199 one-time",
+    paywall_upgrade_annual: "Annual · €199/year",
+    paywall_period_yearly: "/year",
     paywall_close: "close",
 
     // Coming soon (UpgradeModal footer)
@@ -1240,7 +1243,7 @@ export const TRANSLATIONS = {
     coming_save_desc: "Save and share your favorite simulations with a link.",
     coming_mobile_title: "Mobile app",
     coming_mobile_desc: "Check probabilities from your phone. Push notifications.",
-    coming_soon_footer: "Pro and Lifetime plans include access to all these features when launched.",
+    coming_soon_footer: "Pro and Annual plans include access to all these features when launched.",
 
     // Stripe
     stripe_success_title: "Payment received!",
@@ -1288,10 +1291,11 @@ export const TRANSLATIONS = {
     landing_pro_feat_5: "Export results (json, png)",
     landing_pro_feat_6: "Save up to 10 configurations",
     landing_pro_cta: "Choose Pro",
-    landing_lifetime_feat_1: "Everything in Pro, forever",
-    landing_lifetime_feat_2: "Unlimited saved configurations",
-    landing_lifetime_feat_3: "Access to future features when launched",
-    landing_lifetime_cta: "Choose Lifetime",
+    landing_price_yearly: "/year",
+    landing_annual_feat_1: "Everything in Pro",
+    landing_annual_feat_2: "Up to 100 saved configurations",
+    landing_annual_feat_3: "Access to future features when launched",
+    landing_annual_cta: "Choose Annual",
 
     landing_faq_title: "Frequently asked questions",
     landing_faq_what_q: "What is Prop Forge?",

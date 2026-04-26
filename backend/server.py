@@ -52,7 +52,7 @@ PLAN_FEATURES = {
         "custom_config": True,
         "save_configs": 10,
     },
-    "lifetime": {
+    "annual": {
         "firms_allowed": "all",
         "modes": ["simple", "bootstrap"],
         "compare": True,
@@ -61,7 +61,7 @@ PLAN_FEATURES = {
         "commissions": True,
         "behavioral": True,
         "custom_config": True,
-        "save_configs": -1,
+        "save_configs": 100,
     },
 }
 
@@ -77,7 +77,7 @@ class StatusCheckCreate(BaseModel):
     client_name: str
 
 class CheckoutRequest(BaseModel):
-    plan_type: str  # 'pro_monthly' | 'lifetime'
+    plan_type: str  # 'pro_monthly' | 'annual'
 
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
@@ -197,10 +197,10 @@ async def stripe_webhook(request: Request):
             update["plan"] = "pro"
             update["status"] = "active"
             update["subscription_id"] = subscription_id
-        elif plan_type == "lifetime":
-            update["plan"] = "lifetime"
+        elif plan_type == "annual":
+            update["plan"] = "annual"
             update["status"] = "active"
-            update["lifetime_paid"] = True
+            update["subscription_id"] = subscription_id
         
         sync_db.user_plans.update_one(
             {"user_id": user_id},
@@ -212,7 +212,7 @@ async def stripe_webhook(request: Request):
         stripe_customer_id = obj.get("customer")
         if stripe_customer_id:
             sync_db.user_plans.update_one(
-                {"stripe_customer_id": stripe_customer_id, "plan": "pro"},
+                {"stripe_customer_id": stripe_customer_id, "plan": {"$in": ["pro", "annual"]}},
                 {"$set": {"plan": "free", "status": "active", "updated_at": datetime.now(timezone.utc)}}
             )
     
