@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef, lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Analytics } from '@vercel/analytics/react';
 import "./App.css";
 import { FIRM_DATABASE, STRATEGY_DEFAULTS, resolveFundedRules } from "./firmDatabase";
 import { runMonteCarlo } from "./monteCarlo";
@@ -47,6 +48,7 @@ function App() {
           </UserPlanProvider>
         </AuthProvider>
       </LangProvider>
+      <Analytics />
     </BrowserRouter>
   );
 }
