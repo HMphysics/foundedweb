@@ -25,10 +25,8 @@ export default function WelcomeBlock({ onClose }) {
             <div style={{ color: C.smoke, fontSize: 10.5, letterSpacing: 0.25, textTransform: "uppercase",
                           marginBottom: 6, fontWeight: 700 }}>{t("welcome_flow_title")}</div>
             <ol style={{ margin: 0, paddingLeft: 18, color: C.linen, fontSize: 12.5, lineHeight: 1.8 }}>
-              <li>{t("welcome_flow_1")}</li>
-              <li>{t("welcome_flow_2")}</li>
-              <li>{t("welcome_flow_3")}</li>
-              <li>{t("welcome_flow_4")}</li>
+              {[t("welcome_flow_1"), t("welcome_flow_2"), t("welcome_flow_3"), t("welcome_flow_4")]
+                .filter(Boolean).map((s, i) => <li key={i}>{s}</li>)}
             </ol>
           </div>
           <div>
@@ -36,16 +34,14 @@ export default function WelcomeBlock({ onClose }) {
                           marginBottom: 6, fontWeight: 700 }}>{t("welcome_needs_title")}</div>
             <ul style={{ margin: 0, paddingLeft: 18, color: C.linen, fontSize: 12.5, lineHeight: 1.8,
                          listStyle: "'› '" }}>
-              <li>{t("welcome_needs_1")}</li>
-              <li>{t("welcome_needs_2")}</li>
-              <li>{t("welcome_needs_3")}</li>
-              <li>{t("welcome_needs_4")}</li>
+              {[t("welcome_needs_1"), t("welcome_needs_2"), t("welcome_needs_3"), t("welcome_needs_4")]
+                .filter(Boolean).map((s, i) => <li key={i}>{s}</li>)}
             </ul>
           </div>
         </div>
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px dashed ${C.haze}`,
                       color: C.smoke, fontSize: 11.5, lineHeight: 1.6 }}>
-          // {t("welcome_footer")}
+          {t("welcome_footer")}
         </div>
       </div>
     </section>
