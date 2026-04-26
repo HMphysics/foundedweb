@@ -8,7 +8,7 @@ import { openCustomerPortal } from "../../lib/stripe";
 import HeaderSeal from "./HeaderSeal";
 import AuthModal from "../auth/AuthModal";
 
-function LangToggle({ lang, setLang }) {
+export function LangToggle({ lang, setLang }) {
   const active = { color: C.brass, fontWeight: 700 };
   const dim    = { color: C.smoke, cursor: "pointer" };
   return (

@@ -7,6 +7,7 @@ import { useT } from "../LangContext";
 import { C } from "../../lib/colors";
 import AuthModal from "../auth/AuthModal";
 import HeaderSeal from "../layout/HeaderSeal";
+import { LangToggle } from "../layout/Header";
 import Footer from "../layout/Footer";
 import LandingHero from "./LandingHero";
 import LandingHowItWorks from "./LandingHowItWorks";
@@ -14,7 +15,7 @@ import LandingPricing from "./LandingPricing";
 import LandingFAQ from "./LandingFAQ";
 import LandingCTA from "./LandingCTA";
 
-function LandingHeader({ onCTAClick, onSignInClick, t }) {
+function LandingHeader({ onCTAClick, onSignInClick, t, lang, setLang }) {
   return (
     <header style={{
       maxWidth: 1100, margin: "0 auto",
@@ -37,7 +38,8 @@ function LandingHeader({ onCTAClick, onSignInClick, t }) {
           </div>
         </div>
       </a>
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+        <LangToggle lang={lang} setLang={setLang} />
         <button onClick={onSignInClick}
                 data-testid="landing-signin"
                 style={{
@@ -64,7 +66,7 @@ function LandingHeader({ onCTAClick, onSignInClick, t }) {
 }
 
 export default function Landing() {
-  const { t } = useT();
+  const { t, lang, setLang } = useT();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [authOpen, setAuthOpen] = useState(false);
@@ -93,7 +95,7 @@ export default function Landing() {
   return (
     <div style={{ minHeight: "100vh", color: C.linen, background: C.ink }}
          data-testid="landing-root">
-      <LandingHeader onCTAClick={handleCTA} onSignInClick={handleSignIn} t={t} />
+      <LandingHeader onCTAClick={handleCTA} onSignInClick={handleSignIn} t={t} lang={lang} setLang={setLang} />
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px" }}>
         <LandingHero onCTAClick={handleCTA} />
         <LandingHowItWorks />
