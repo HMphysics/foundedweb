@@ -75,6 +75,16 @@ Prop Forge - Monte Carlo Oracle para simular probabilidades de pasar challenges 
 - Frontend: 70% ✅
 - Core functionality working
 
+### Apr 26, 2026 - Phase 7: Public Landing Page
+- Routing refactor: `/` is now public Landing for anonymous users; logged-in users redirect to `/app`. Legal pages (`/terms`, `/privacy`, `/cookies`) public; `/app` requires auth (redirects to `/` if not).
+- New `/components/landing/` directory with: `Landing.jsx`, `LandingHero.jsx`, `LandingHowItWorks.jsx`, `LandingPricing.jsx`, `LandingFAQ.jsx`, `LandingCTA.jsx` (LandingFooter reuses existing `Footer.jsx`).
+- `AuthModal` extended with `initialMode` prop (`signin`|`signup`); landing CTAs open it in signup mode by default, header "sign in" opens signin.
+- Landing sections: Hero (large Fraunces title + cinnabar CTA), How it works (3 numbered steps), Pricing (Free 0€ / Pro 31€ ★ RECOMMENDED / Lifetime 199€), FAQ (6 collapsibles: what/diff/experience/security/cancel/refund), Final CTA "stop guessing".
+- 70+ new i18n keys in both ES and EN (`landing_*` namespace).
+- SEO: `index.html` updated with title, meta description, OG/Twitter tags, canonical to `https://forgeprop.tech/`.
+- Public assets: `/public/robots.txt` (allow all but `/app`) and `/public/sitemap.xml` (4 URLs: home + 3 legal).
+- Build verified ✓ (15.7s, no warnings, no errors); ESLint clean.
+
 ## How to Test Plans Manually
 1. Register/login in the app
 2. Open MongoDB Atlas → Browse Collections → user_plans

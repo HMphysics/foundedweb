@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import "./App.css";
 import { FIRM_DATABASE, STRATEGY_DEFAULTS, resolveFundedRules } from "./firmDatabase";
 import { runMonteCarlo } from "./monteCarlo";
@@ -7,7 +7,7 @@ import { C } from "./lib/colors";
 import { isPlanModified } from "./lib/format";
 import { downloadJSON, exportPNG as exportPNGHelper } from "./lib/export";
 import { LangProvider, useT } from "./components/LangContext";
-import { AuthProvider } from "./components/AuthContext";
+import { AuthProvider, useAuth } from "./components/AuthContext";
 import { UserPlanProvider } from "./components/UserPlanContext";
 import CsvModal from "./components/CsvModal";
 import Header from "./components/layout/Header";
@@ -17,6 +17,7 @@ import StrategyTab from "./components/strategy/StrategyTab";
 import Terms from "./components/legal/Terms";
 import Privacy from "./components/legal/Privacy";
 import Cookies from "./components/legal/Cookies";
+import Landing from "./components/landing/Landing";
 
 // Lazy-loaded heavy tabs
 const OracleTab = lazy(() => import("./components/oracle/OracleTab"));
@@ -37,7 +38,8 @@ function App() {
         <AuthProvider>
           <UserPlanProvider>
             <Routes>
-              <Route path="/" element={<AppInner />} />
+              <Route path="/" element={<HomeRoute />} />
+              <Route path="/app" element={<AppRoute />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/cookies" element={<Cookies />} />
@@ -47,6 +49,23 @@ function App() {
       </LangProvider>
     </BrowserRouter>
   );
+}
+
+// Logged-in users entering "/" are sent to the app; everyone else sees the landing.
+function HomeRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/app" replace />;
+  return <Landing />;
+}
+
+// "/app" requires auth. If not logged in we send them back to the landing where
+// the AuthModal can be triggered from any CTA.
+function AppRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/" replace />;
+  return <AppInner />;
 }
 
 function AppInner() {

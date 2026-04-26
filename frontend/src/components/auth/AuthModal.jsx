@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { useT } from '../LangContext';
 
-export default function AuthModal({ onClose }) {
+export default function AuthModal({ onClose, initialMode = 'signin' }) {
   const { t } = useT();
   const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState('signin'); // signin | signup
+  const [mode, setMode] = useState(initialMode); // signin | signup
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
