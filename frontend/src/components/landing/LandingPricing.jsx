@@ -140,6 +140,7 @@ export default function LandingPricing({ onCTAClick }) {
             t("landing_pro_feat_3"),
             t("landing_pro_feat_4"),
             t("landing_pro_feat_5"),
+            t("landing_pro_feat_6"),
           ]}
           ctaLabel={t("landing_pro_cta")}
           onCTAClick={onCTAClick}
