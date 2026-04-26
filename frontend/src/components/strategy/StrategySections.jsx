@@ -1,6 +1,7 @@
 // All STRATEGY tab sections extracted from App.js.
 // Each is a collapsible panel bound to the shared strategy state.
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
+import * as XLSX from "xlsx";
 import { C } from "../../lib/colors";
 import { fmtMoney } from "../../lib/format";
 import { useT } from "../LangContext";
@@ -120,7 +121,11 @@ export function BootstrapInput({ strategy, setStrategy }) {
   const { t } = useT();
   const [raw, setRaw] = useState("");
   const [errors, setErrors] = useState([]);
+  const [excelData, setExcelData] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
   const stats = strategy.bootstrapStats;
+
   const parse = (text) => {
     const { data, stats: s, errors: errs } = parseBootstrapData(text);
     setErrors(errs || []);
@@ -137,20 +142,145 @@ export function BootstrapInput({ strategy, setStrategy }) {
     setRaw(text);
     parse(text);
   };
+
+  // ─── Excel upload handling ──────────────────────────────────────────────
+  const readWorkbookFromFile = (file) => {
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["xlsx", "xls"].includes(ext)) {
+      setErrors([t("bootstrap_error_format")]);
+      return;
+    }
+    setErrors([]);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheetName = workbook.SheetNames[0];
+        loadSheetIntoSelector(workbook, firstSheetName, file.name);
+      } catch (err) {
+        console.error(err);
+        setErrors([t("bootstrap_error_parse")]);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const loadSheetIntoSelector = (workbook, sheetName, fileName) => {
+    const worksheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(worksheet, {
+      header: 1, defval: null, blankrows: false,
+    });
+    if (rows.length < 2) {
+      setErrors([t("bootstrap_error_empty")]);
+      return;
+    }
+    const headers = rows[0] || [];
+    // Normalise: ensure every preview row has the same column count as headers.
+    const colCount = Math.max(headers.length,
+      ...rows.slice(1, 11).map(r => (r ? r.length : 0)));
+    const padRow = (r) => {
+      const out = Array.from({ length: colCount }, (_, i) => (r ? r[i] : null));
+      return out.map(v => (v === undefined ? null : v));
+    };
+    setExcelData({
+      workbook,
+      sheetNames: workbook.SheetNames,
+      sheetName,
+      fileName,
+      headers: Array.from({ length: colCount }, (_, i) => headers[i]),
+      rows: rows.slice(1, 11).map(padRow),
+      allRows: rows.slice(1).map(padRow),
+    });
+  };
+
+  const switchSheet = (newSheetName) => {
+    if (!excelData) return;
+    loadSheetIntoSelector(excelData.workbook, newSheetName, excelData.fileName);
+  };
+
+  const onFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) readWorkbookFromFile(file);
+    e.target.value = "";
+  };
+
+  const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (e) => { e.preventDefault(); setIsDragging(false); };
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) readWorkbookFromFile(file);
+  };
+
+  const selectColumn = (colIdx) => {
+    if (!excelData) return;
+    const values = excelData.allRows
+      .map(row => row[colIdx])
+      .filter(v => v !== null && v !== undefined && v !== "")
+      .map(v => {
+        // Tolerant numeric parse: strip currency symbols / spaces, accept comma decimals.
+        const cleaned = String(v).replace(/[^\d,.\-+eE]/g, "").replace(",", ".");
+        const num = parseFloat(cleaned);
+        return Number.isFinite(num) ? num : null;
+      })
+      .filter(v => v !== null);
+
+    if (values.length < 30) {
+      setErrors([t("bootstrap_excel_too_few_values", { count: values.length })]);
+      return;
+    }
+    const csvText = values.join("\n");
+    setRaw(csvText);
+    parse(csvText);
+    setExcelData(null);
+  };
+
+  const cancelExcelImport = () => setExcelData(null);
+
+  // ─── Render ─────────────────────────────────────────────────────────────
   return (
     <div data-testid="bootstrap-input">
       <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", color: C.linen,
                     fontSize: 13, lineHeight: 1.5, marginBottom: 10 }}>
         {t("bootstrap_help")}
       </div>
-      <textarea
-        className="fg-input"
-        style={{ minHeight: 140, fontFamily: "var(--mono)", fontSize: 12, lineHeight: 1.5 }}
-        placeholder={t("bootstrap_placeholder")}
-        value={raw}
-        onChange={(e) => { setRaw(e.target.value); parse(e.target.value); }}
-        data-testid="bootstrap-textarea"
-      />
+
+      {/* Drag & drop wrapper */}
+      <div onDragOver={handleDragOver}
+           onDragLeave={handleDragLeave}
+           onDrop={handleDrop}
+           style={{ position: "relative" }}>
+        <textarea
+          className="fg-input"
+          style={{ minHeight: 140, fontFamily: "var(--mono)", fontSize: 12, lineHeight: 1.5 }}
+          placeholder={t("bootstrap_placeholder")}
+          value={raw}
+          onChange={(e) => { setRaw(e.target.value); parse(e.target.value); }}
+          data-testid="bootstrap-textarea"
+        />
+        {isDragging && (
+          <div data-testid="bootstrap-drop-overlay"
+               style={{
+                 position: "absolute", inset: 0,
+                 background: `${C.cinnabar}26`,
+                 border: `2px dashed ${C.cinnabar}`,
+                 display: "flex", alignItems: "center", justifyContent: "center",
+                 fontFamily: "var(--plex)", fontSize: 14, fontWeight: 600,
+                 color: C.bone, letterSpacing: "0.05em",
+                 pointerEvents: "none",
+               }}>
+            ↓ {t("bootstrap_drop_here")}
+          </div>
+        )}
+      </div>
+
+      <input ref={fileInputRef} type="file" accept=".xlsx,.xls"
+             onChange={onFileInputChange}
+             style={{ display: "none" }}
+             data-testid="bootstrap-file-input" />
+
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
         <button className="fg-btn-ghost" onClick={() => parse(raw)} data-testid="bootstrap-parse"
                 style={{ flex: 1, minWidth: 120 }}>
@@ -162,7 +292,122 @@ export function BootstrapInput({ strategy, setStrategy }) {
         <button className="fg-btn-ghost" onClick={loadExample} data-testid="bootstrap-load-example">
           {t("bootstrap_load_example")}
         </button>
+        <button className="fg-btn-ghost"
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="bootstrap-upload-excel">
+          {t("bootstrap_upload_excel")}
+        </button>
       </div>
+
+      {/* Excel column selector panel */}
+      {excelData && (
+        <div data-testid="excel-column-selector"
+             style={{
+               marginTop: 14, padding: 16,
+               background: C.leather, border: `1px solid ${C.dust}`,
+             }}>
+          <div style={{ fontFamily: "var(--plex)", fontSize: 11, letterSpacing: 0.2,
+                        textTransform: "uppercase", color: C.brass, fontWeight: 600,
+                        marginBottom: 6 }}>
+            § {t("bootstrap_excel_select_column_title")}
+          </div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: C.smoke,
+                        marginBottom: 10, display: "flex", gap: 12, alignItems: "center",
+                        flexWrap: "wrap" }}>
+            <span>{excelData.fileName}</span>
+            <span style={{ color: C.haze }}>·</span>
+            <span>{t("bootstrap_excel_sheet")}:</span>
+            {excelData.sheetNames.length > 1 ? (
+              <select className="fg-select"
+                      data-testid="excel-sheet-select"
+                      value={excelData.sheetName}
+                      onChange={(e) => switchSheet(e.target.value)}
+                      style={{ padding: "4px 8px", fontSize: 11 }}>
+                {excelData.sheetNames.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            ) : (
+              <span style={{ color: C.bone }}>{excelData.sheetName}</span>
+            )}
+          </div>
+          <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", fontSize: 12,
+                        color: C.linen, marginBottom: 12, lineHeight: 1.5 }}>
+            {t("bootstrap_excel_select_column_help")}
+          </div>
+
+          <div style={{ overflowX: "auto", maxWidth: "100%",
+                        border: `1px solid ${C.haze}` }}>
+            <table style={{
+              borderCollapse: "collapse",
+              fontFamily: "var(--mono)", fontSize: 11.5,
+              minWidth: "100%",
+            }}>
+              <thead>
+                <tr>
+                  {excelData.headers.map((header, colIdx) => (
+                    <th key={colIdx} style={{
+                      padding: 6, borderRight: `1px solid ${C.haze}`,
+                      borderBottom: `1px solid ${C.haze}`,
+                      verticalAlign: "top", minWidth: 140,
+                      background: C.archive, textAlign: "left",
+                    }}>
+                      <button
+                        onClick={() => selectColumn(colIdx)}
+                        data-testid={`excel-use-column-${colIdx}`}
+                        style={{
+                          width: "100%", padding: "6px 10px",
+                          background: C.cinnabar, color: C.bone,
+                          border: "none", cursor: "pointer",
+                          fontSize: 10.5, fontFamily: "var(--mono)",
+                          letterSpacing: "0.08em", textTransform: "uppercase",
+                          fontWeight: 600, marginBottom: 6,
+                        }}>
+                        {t("bootstrap_excel_use_column")}
+                      </button>
+                      <div style={{ color: C.bone, fontWeight: 600,
+                                    overflow: "hidden", textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap" }}>
+                        {header
+                          ? String(header)
+                          : `${t("bootstrap_excel_column")} ${String.fromCharCode(65 + colIdx)}`}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {excelData.rows.map((row, rowIdx) => (
+                  <tr key={rowIdx}>
+                    {excelData.headers.map((_, colIdx) => (
+                      <td key={colIdx} style={{
+                        padding: "5px 10px",
+                        borderRight: `1px solid ${C.haze}`,
+                        borderBottom: `1px solid ${C.haze}`,
+                        color: C.linen,
+                      }}>
+                        {row[colIdx] !== null && row[colIdx] !== undefined && row[colIdx] !== ""
+                          ? String(row[colIdx])
+                          : "—"}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <button onClick={cancelExcelImport}
+                  data-testid="excel-cancel"
+                  style={{
+                    marginTop: 12, background: "transparent",
+                    color: C.smoke, border: `1px solid ${C.dust}`,
+                    padding: "6px 14px", fontSize: 11,
+                    fontFamily: "var(--mono)", letterSpacing: "0.08em",
+                    textTransform: "uppercase", cursor: "pointer",
+                  }}>
+            {t("bootstrap_excel_cancel")}
+          </button>
+        </div>
+      )}
 
       {errors.length > 0 && (
         <div style={{ marginTop: 10, color: C.cinnabar, fontSize: 12, fontStyle: "italic",
