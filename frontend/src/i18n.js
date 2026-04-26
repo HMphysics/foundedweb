@@ -572,6 +572,11 @@ export const TRANSLATIONS = {
     auth_submit_signup: "crear cuenta",
     auth_switch_to_signup: "¿no tienes cuenta? regístrate",
     auth_switch_to_signin: "¿ya tienes cuenta? inicia sesión",
+
+    auth_check_email_title: "Revisa tu correo",
+    auth_check_email_body_1: "Te hemos enviado un email de confirmación a {email}.",
+    auth_check_email_body_2: "Haz click en el enlace del correo para activar tu cuenta. Si no lo encuentras, revisa la carpeta de spam o promociones.",
+    auth_check_email_close: "Entendido",
     auth_error_invalid_email: "email no válido",
     auth_error_short_password: "la contraseña debe tener al menos 6 caracteres",
 
@@ -1215,6 +1220,11 @@ export const TRANSLATIONS = {
     auth_submit_signup: "create account",
     auth_switch_to_signup: "no account? sign up",
     auth_switch_to_signin: "already have an account? sign in",
+
+    auth_check_email_title: "Check your email",
+    auth_check_email_body_1: "We've sent a confirmation email to {email}.",
+    auth_check_email_body_2: "Click the link in the email to activate your account. If you can't find it, check your spam or promotions folder.",
+    auth_check_email_close: "Got it",
     auth_error_invalid_email: "invalid email",
     auth_error_short_password: "password must be at least 6 characters",
 
