@@ -38,6 +38,7 @@ PLAN_FEATURES = {
         "post_pass": False,
         "commissions": False,
         "behavioral": False,
+        "custom_config": False,
         "save_configs": 0,
     },
     "pro": {
@@ -48,6 +49,7 @@ PLAN_FEATURES = {
         "post_pass": True,
         "commissions": True,
         "behavioral": True,
+        "custom_config": True,
         "save_configs": 10,
     },
     "lifetime": {
@@ -58,6 +60,7 @@ PLAN_FEATURES = {
         "post_pass": True,
         "commissions": True,
         "behavioral": True,
+        "custom_config": True,
         "save_configs": -1,
     },
 }

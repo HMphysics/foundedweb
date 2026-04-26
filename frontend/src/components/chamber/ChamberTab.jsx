@@ -30,6 +30,14 @@ export default function ChamberTab({
     selectFirm(firmId);
   };
 
+  const handleCustomClick = () => {
+    if (!canAccess('custom_config')) {
+      setShowUpgrade(true);
+      return;
+    }
+    selectFirm("custom");
+  };
+
   return (
     <>
       <div className="pf-tab-body fg-fadein" data-testid="pane-chamber">
@@ -62,7 +70,8 @@ export default function ChamberTab({
              style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
           {customFirm && (
             <CustomCard selected={selectedFirmId === "custom"}
-                        onClick={() => selectFirm("custom")} />
+                        locked={!canAccess('custom_config')}
+                        onClick={handleCustomClick} />
           )}
           {filteredRegular.map((firm) => (
             <FirmCard key={firm.id} firm={firm}

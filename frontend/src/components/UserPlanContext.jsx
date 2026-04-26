@@ -15,6 +15,7 @@ const FREE_DEFAULT = {
     post_pass: false,
     commissions: false,
     behavioral: false,
+    custom_config: false,
     save_configs: 0,
   },
 };
@@ -80,6 +81,7 @@ export function UserPlanProvider({ children }) {
     if (feature === 'post_pass') return f.post_pass;
     if (feature === 'commissions') return f.commissions;
     if (feature === 'behavioral') return f.behavioral;
+    if (feature === 'custom_config') return f.custom_config;
     if (feature === 'bootstrap') return f.modes?.includes('bootstrap');
     if (feature?.startsWith('firm:')) {
       const firmId = feature.slice(5);

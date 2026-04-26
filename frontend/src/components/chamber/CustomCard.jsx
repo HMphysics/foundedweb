@@ -1,13 +1,29 @@
 import { C } from "../../lib/colors";
 import { useT } from "../LangContext";
 
-export default function CustomCard({ selected, onClick }) {
+export default function CustomCard({ selected, locked = false, onClick }) {
   const { t } = useT();
   return (
     <div onClick={onClick} data-testid="firm-custom"
-         className={`fg-card custom-card ${selected ? "selected" : ""}`}
+         className={`fg-card custom-card ${selected ? "selected" : ""} ${locked ? "locked" : ""}`}
          style={{ padding: 28, display: "flex", flexDirection: "column", gap: 14,
-                  justifyContent: "space-between", position: "relative" }}>
+                  justifyContent: "space-between", position: "relative",
+                  opacity: locked ? 0.78 : 1 }}>
+      {locked && (
+        <span data-testid="firm-custom-lock" style={{
+          position: "absolute", top: 12, right: 12,
+          display: "inline-flex", alignItems: "center", gap: 5,
+          fontSize: 9.5, fontFamily: "var(--mono)", color: C.brass,
+          letterSpacing: "0.12em", padding: "3px 7px",
+          border: `1px solid ${C.brass}`,
+        }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.brass} strokeWidth="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          PRO
+        </span>
+      )}
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <svg viewBox="0 0 64 64" width="52" height="52" aria-hidden="true"
              style={{ color: C.brass, display: "block", flexShrink: 0, opacity: 0.85 }}>
