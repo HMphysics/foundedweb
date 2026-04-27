@@ -419,7 +419,7 @@ export const TRANSLATIONS = {
     quick_start_body: "para una estimación rápida basta con rellenar la sección de TRADING DATA. el resto son ajustes avanzados opcionales — déjalos como están si no estás seguro.",
 
     // Bootstrap input
-    bootstrap_help: "pega los P&Ls de tu backtest · un número por línea, o CSV con columnas · acepta: pnl, mae, mfe.",
+    bootstrap_help: "Pega los P&Ls de tu backtest · un número por línea, o CSV con columnas. También puedes subir un archivo .xlsx, .xls o .csv · acepta columnas: pnl, mae, mfe.",
     bootstrap_placeholder: "127\n-340\n892\n-45\n-210\n...\n\no bien:\ndate,pnl,mae\n2024-01-02,127,85\n2024-01-03,-340,420",
     bootstrap_parse: "parse data",
     bootstrap_paste_clip: "paste from clipboard",
@@ -1097,7 +1097,7 @@ export const TRANSLATIONS = {
     quick_start_title: "QUICK START",
     quick_start_body: "for a quick estimate just fill the TRADING DATA section. everything below is optional advanced tuning — leave it as-is if you're not sure.",
 
-    bootstrap_help: "paste your backtest daily P&Ls · one number per line, or CSV with columns · accepts: pnl, mae, mfe.",
+    bootstrap_help: "Paste your backtest daily P&Ls · one number per line, or CSV with columns. You can also upload a .xlsx, .xls or .csv file · accepts columns: pnl, mae, mfe.",
     bootstrap_placeholder: "127\n-340\n892\n-45\n-210\n...\n\nor:\ndate,pnl,mae\n2024-01-02,127,85\n2024-01-03,-340,420",
     bootstrap_parse: "parse data",
     bootstrap_paste_clip: "paste from clipboard",
