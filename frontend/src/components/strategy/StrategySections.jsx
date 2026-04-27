@@ -123,7 +123,13 @@ export function BootstrapInput({ strategy, setStrategy }) {
   const [errors, setErrors] = useState([]);
   const [excelData, setExcelData] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  // Column assignments inside the Excel/CSV column-picker modal.
+  const [pnlCol, setPnlCol] = useState(null);
+  const [maeCol, setMaeCol] = useState(null);
+  const [mfeCol, setMfeCol] = useState(null);
   const fileInputRef = useRef(null);
+  const parseTimerRef = useRef(null);
   const stats = strategy.bootstrapStats;
 
   const parse = (text) => {
@@ -131,37 +137,69 @@ export function BootstrapInput({ strategy, setStrategy }) {
     setErrors(errs || []);
     setStrategy({ ...strategy, bootstrapData: data, bootstrapStats: s });
   };
+
+  // Auto-parse with 250ms debounce so typing/pasting feels instant but doesn't
+  // spam the parser on every keystroke.
+  const setRawAndParse = (text) => {
+    setRaw(text);
+    if (parseTimerRef.current) clearTimeout(parseTimerRef.current);
+    if (!text.trim()) {
+      setErrors([]);
+      setStrategy({ ...strategy, bootstrapData: [], bootstrapStats: null });
+      return;
+    }
+    parseTimerRef.current = setTimeout(() => parse(text), 250);
+  };
+
   const pasteClip = async () => {
     try {
       const text = await navigator.clipboard.readText();
       setRaw(text); parse(text);
     } catch { setErrors(["Clipboard access denied"]); }
   };
+
   const loadExample = () => {
     const text = exampleAsCSV();
     setRaw(text);
     parse(text);
   };
 
-  // ─── Excel upload handling ──────────────────────────────────────────────
-  const readWorkbookFromFile = (file) => {
+  const handleClear = () => {
+    if (parseTimerRef.current) clearTimeout(parseTimerRef.current);
+    setRaw("");
+    setErrors([]);
+    setStrategy({ ...strategy, bootstrapData: [], bootstrapStats: null });
+  };
+
+  // ─── File upload (Excel + CSV) ──────────────────────────────────────────
+  const resetColumnState = () => { setPnlCol(null); setMaeCol(null); setMfeCol(null); };
+
+  const readFile = (file) => {
     const ext = file.name.split(".").pop().toLowerCase();
-    if (!["xlsx", "xls"].includes(ext)) {
+    if (!["xlsx", "xls", "csv"].includes(ext)) {
       setErrors([t("bootstrap_error_format")]);
       return;
     }
     setErrors([]);
+    setIsProcessing(true);
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const data = new Uint8Array(evt.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
+        // SheetJS reads CSV via the same XLSX.read() with type 'array'.
+        const buf = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(buf, { type: "array" });
         const firstSheetName = workbook.SheetNames[0];
         loadSheetIntoSelector(workbook, firstSheetName, file.name);
       } catch (err) {
         console.error(err);
         setErrors([t("bootstrap_error_parse")]);
+      } finally {
+        setIsProcessing(false);
       }
+    };
+    reader.onerror = () => {
+      setIsProcessing(false);
+      setErrors([t("bootstrap_error_parse")]);
     };
     reader.readAsArrayBuffer(file);
   };
@@ -176,13 +214,19 @@ export function BootstrapInput({ strategy, setStrategy }) {
       return;
     }
     const headers = rows[0] || [];
-    // Normalise: ensure every preview row has the same column count as headers.
     const colCount = Math.max(headers.length,
       ...rows.slice(1, 11).map(r => (r ? r.length : 0)));
-    const padRow = (r) => {
-      const out = Array.from({ length: colCount }, (_, i) => (r ? r[i] : null));
-      return out.map(v => (v === undefined ? null : v));
-    };
+    const padRow = (r) => Array.from({ length: colCount }, (_, i) =>
+      (r && r[i] !== undefined ? r[i] : null));
+
+    // Heuristics: try to auto-detect P&L / MAE / MFE columns from header text.
+    const lcHeaders = headers.map(h => String(h ?? "").toLowerCase());
+    const findIdx = (aliases) => lcHeaders.findIndex(h =>
+      aliases.some(a => h === a || h.includes(a)));
+    const guessPnl = findIdx(["pnl", "p&l", "p/l", "profit", "net", "result"]);
+    const guessMae = findIdx(["mae", "adverse", "drawdown", "max_dd"]);
+    const guessMfe = findIdx(["mfe", "favorable", "favourable", "max_up"]);
+
     setExcelData({
       workbook,
       sheetNames: workbook.SheetNames,
@@ -192,6 +236,9 @@ export function BootstrapInput({ strategy, setStrategy }) {
       rows: rows.slice(1, 11).map(padRow),
       allRows: rows.slice(1).map(padRow),
     });
+    setPnlCol(guessPnl >= 0 ? guessPnl : null);
+    setMaeCol(guessMae >= 0 ? guessMae : null);
+    setMfeCol(guessMfe >= 0 ? guessMfe : null);
   };
 
   const switchSheet = (newSheetName) => {
@@ -201,7 +248,7 @@ export function BootstrapInput({ strategy, setStrategy }) {
 
   const onFileInputChange = (e) => {
     const file = e.target.files?.[0];
-    if (file) readWorkbookFromFile(file);
+    if (file) readFile(file);
     e.target.value = "";
   };
 
@@ -211,33 +258,50 @@ export function BootstrapInput({ strategy, setStrategy }) {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) readWorkbookFromFile(file);
+    if (file) readFile(file);
   };
 
-  const selectColumn = (colIdx) => {
-    if (!excelData) return;
-    const values = excelData.allRows
-      .map(row => row[colIdx])
-      .filter(v => v !== null && v !== undefined && v !== "")
-      .map(v => {
-        // Tolerant numeric parse: strip currency symbols / spaces, accept comma decimals.
-        const cleaned = String(v).replace(/[^\d,.\-+eE]/g, "").replace(",", ".");
-        const num = parseFloat(cleaned);
-        return Number.isFinite(num) ? num : null;
-      })
-      .filter(v => v !== null);
+  const cleanNumber = (v) => {
+    if (v === null || v === undefined || v === "") return null;
+    const cleaned = String(v).replace(/[^\d,.\-+eE]/g, "").replace(",", ".");
+    const num = parseFloat(cleaned);
+    return Number.isFinite(num) ? num : null;
+  };
 
-    if (values.length < 30) {
-      setErrors([t("bootstrap_excel_too_few_values", { count: values.length })]);
+  const confirmColumnSelection = () => {
+    if (!excelData || pnlCol === null) return;
+
+    const headers = ["pnl"];
+    const indices = [pnlCol];
+    if (maeCol !== null) { headers.push("mae"); indices.push(maeCol); }
+    if (mfeCol !== null) { headers.push("mfe"); indices.push(mfeCol); }
+
+    const lines = [headers.join(",")];
+    for (const row of excelData.allRows) {
+      const values = indices.map(i => cleanNumber(row[i]));
+      // Skip rows whose P&L value is missing/non-numeric.
+      if (values[0] === null) continue;
+      lines.push(values.map(v => v === null ? "" : v).join(","));
+    }
+
+    const numericRowCount = lines.length - 1;
+    if (numericRowCount < 30) {
+      setErrors([t("bootstrap_excel_too_few_values", { count: numericRowCount })]);
       return;
     }
-    const csvText = values.join("\n");
+
+    const csvText = lines.join("\n");
     setRaw(csvText);
     parse(csvText);
     setExcelData(null);
+    resetColumnState();
+    setErrors([]);
   };
 
-  const cancelExcelImport = () => setExcelData(null);
+  const cancelExcelImport = () => {
+    setExcelData(null);
+    resetColumnState();
+  };
 
   // ─── Render ─────────────────────────────────────────────────────────────
   return (
@@ -257,7 +321,7 @@ export function BootstrapInput({ strategy, setStrategy }) {
           style={{ minHeight: 140, fontFamily: "var(--mono)", fontSize: 12, lineHeight: 1.5 }}
           placeholder={t("bootstrap_placeholder")}
           value={raw}
-          onChange={(e) => { setRaw(e.target.value); parse(e.target.value); }}
+          onChange={(e) => setRawAndParse(e.target.value)}
           data-testid="bootstrap-textarea"
         />
         {isDragging && (
@@ -274,19 +338,35 @@ export function BootstrapInput({ strategy, setStrategy }) {
             ↓ {t("bootstrap_drop_here")}
           </div>
         )}
+        {isProcessing && (
+          <div data-testid="bootstrap-processing"
+               style={{
+                 position: "absolute", inset: 0,
+                 background: `${C.ink}cc`,
+                 display: "flex", alignItems: "center", justifyContent: "center",
+                 fontFamily: "var(--mono)", fontSize: 12, color: C.brass,
+                 letterSpacing: "0.1em",
+                 pointerEvents: "none",
+               }}>
+            <span className="bootstrap-spinner" style={{
+              width: 14, height: 14, marginRight: 10,
+              border: `2px solid ${C.brass}`, borderTopColor: "transparent",
+              borderRadius: "50%", display: "inline-block",
+              animation: "bootstrap-spin 0.7s linear infinite",
+            }} />
+            {t("bootstrap_loading")}
+          </div>
+        )}
       </div>
 
-      <input ref={fileInputRef} type="file" accept=".xlsx,.xls"
+      <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv"
              onChange={onFileInputChange}
              style={{ display: "none" }}
              data-testid="bootstrap-file-input" />
 
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-        <button className="fg-btn-ghost" onClick={() => parse(raw)} data-testid="bootstrap-parse"
+        <button className="fg-btn-ghost" onClick={pasteClip} data-testid="bootstrap-paste"
                 style={{ flex: 1, minWidth: 120 }}>
-          {t("bootstrap_parse")}
-        </button>
-        <button className="fg-btn-ghost" onClick={pasteClip} data-testid="bootstrap-paste">
           {t("bootstrap_paste_clip")}
         </button>
         <button className="fg-btn-ghost" onClick={loadExample} data-testid="bootstrap-load-example">
@@ -294,118 +374,230 @@ export function BootstrapInput({ strategy, setStrategy }) {
         </button>
         <button className="fg-btn-ghost"
                 onClick={() => fileInputRef.current?.click()}
-                data-testid="bootstrap-upload-excel">
-          {t("bootstrap_upload_excel")}
+                data-testid="bootstrap-upload-file">
+          {t("bootstrap_upload_file")}
+        </button>
+        <button className="fg-btn-ghost" onClick={handleClear}
+                disabled={!raw && !stats}
+                data-testid="bootstrap-clear"
+                style={{ opacity: (!raw && !stats) ? 0.5 : 1 }}>
+          {t("bootstrap_clear")}
         </button>
       </div>
 
-      {/* Excel column selector panel */}
+      {/* Column-assignment modal */}
       {excelData && (
-        <div data-testid="excel-column-selector"
+        <div data-testid="excel-column-modal"
+             onClick={(e) => { if (e.target === e.currentTarget) cancelExcelImport(); }}
              style={{
-               marginTop: 14, padding: 16,
-               background: C.leather, border: `1px solid ${C.dust}`,
+               position: "fixed", inset: 0, zIndex: 100,
+               background: `${C.ink}d9`,
+               display: "flex", alignItems: "center", justifyContent: "center",
+               padding: 24,
              }}>
-          <div style={{ fontFamily: "var(--plex)", fontSize: 11, letterSpacing: 0.2,
-                        textTransform: "uppercase", color: C.brass, fontWeight: 600,
-                        marginBottom: 6 }}>
-            § {t("bootstrap_excel_select_column_title")}
-          </div>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: C.smoke,
-                        marginBottom: 10, display: "flex", gap: 12, alignItems: "center",
-                        flexWrap: "wrap" }}>
-            <span>{excelData.fileName}</span>
-            <span style={{ color: C.haze }}>·</span>
-            <span>{t("bootstrap_excel_sheet")}:</span>
-            {excelData.sheetNames.length > 1 ? (
-              <select className="fg-select"
-                      data-testid="excel-sheet-select"
-                      value={excelData.sheetName}
-                      onChange={(e) => switchSheet(e.target.value)}
-                      style={{ padding: "4px 8px", fontSize: 11 }}>
-                {excelData.sheetNames.map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-            ) : (
-              <span style={{ color: C.bone }}>{excelData.sheetName}</span>
-            )}
-          </div>
-          <div style={{ fontFamily: "var(--plex)", fontStyle: "italic", fontSize: 12,
-                        color: C.linen, marginBottom: 12, lineHeight: 1.5 }}>
-            {t("bootstrap_excel_select_column_help")}
-          </div>
+          <div style={{
+            width: "min(960px, 100%)", maxHeight: "92vh",
+            background: C.archive, border: `1px solid ${C.dust}`,
+            display: "flex", flexDirection: "column", overflow: "hidden",
+          }}>
+            <div style={{ padding: "16px 18px", borderBottom: `1px solid ${C.dust}` }}>
+              <div style={{ fontFamily: "var(--plex)", fontSize: 12, letterSpacing: 0.18,
+                            textTransform: "uppercase", color: C.brass, fontWeight: 600 }}>
+                § {t("bootstrap_excel_select_columns_title")}
+              </div>
+              <div style={{ marginTop: 6, fontFamily: "var(--mono)", fontSize: 11,
+                            color: C.smoke, display: "flex", gap: 12,
+                            alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ color: C.bone }}>{excelData.fileName}</span>
+                <span style={{ color: C.haze }}>·</span>
+                <span>{t("bootstrap_excel_sheet")}:</span>
+                {excelData.sheetNames.length > 1 ? (
+                  <select className="fg-select"
+                          data-testid="excel-sheet-select"
+                          value={excelData.sheetName}
+                          onChange={(e) => switchSheet(e.target.value)}
+                          style={{ padding: "4px 8px", fontSize: 11 }}>
+                    {excelData.sheetNames.map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                ) : (
+                  <span style={{ color: C.bone }}>{excelData.sheetName}</span>
+                )}
+              </div>
+            </div>
 
-          <div style={{ overflowX: "auto", maxWidth: "100%",
-                        border: `1px solid ${C.haze}` }}>
-            <table style={{
-              borderCollapse: "collapse",
-              fontFamily: "var(--mono)", fontSize: 11.5,
-              minWidth: "100%",
-            }}>
-              <thead>
-                <tr>
-                  {excelData.headers.map((header, colIdx) => (
-                    <th key={colIdx} style={{
-                      padding: 6, borderRight: `1px solid ${C.haze}`,
-                      borderBottom: `1px solid ${C.haze}`,
-                      verticalAlign: "top", minWidth: 140,
-                      background: C.archive, textAlign: "left",
-                    }}>
-                      <button
-                        onClick={() => selectColumn(colIdx)}
-                        data-testid={`excel-use-column-${colIdx}`}
-                        style={{
-                          width: "100%", padding: "6px 10px",
-                          background: C.cinnabar, color: C.bone,
-                          border: "none", cursor: "pointer",
-                          fontSize: 10.5, fontFamily: "var(--mono)",
-                          letterSpacing: "0.08em", textTransform: "uppercase",
-                          fontWeight: 600, marginBottom: 6,
-                        }}>
-                        {t("bootstrap_excel_use_column")}
-                      </button>
-                      <div style={{ color: C.bone, fontWeight: 600,
-                                    overflow: "hidden", textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap" }}>
-                        {header
-                          ? String(header)
-                          : `${t("bootstrap_excel_column")} ${String.fromCharCode(65 + colIdx)}`}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {excelData.rows.map((row, rowIdx) => (
-                  <tr key={rowIdx}>
-                    {excelData.headers.map((_, colIdx) => (
-                      <td key={colIdx} style={{
-                        padding: "5px 10px",
-                        borderRight: `1px solid ${C.haze}`,
-                        borderBottom: `1px solid ${C.haze}`,
-                        color: C.linen,
-                      }}>
-                        {row[colIdx] !== null && row[colIdx] !== undefined && row[colIdx] !== ""
-                          ? String(row[colIdx])
-                          : "—"}
-                      </td>
-                    ))}
-                  </tr>
+            <div style={{ padding: 18, overflowY: "auto" }}>
+              {/* 3 column-assignment dropdowns */}
+              <div style={{ display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                            gap: 14, marginBottom: 18 }}>
+                {[
+                  { key: "pnl", value: pnlCol, setter: setPnlCol, required: true,
+                    label: t("bootstrap_excel_label_pnl"), help: t("bootstrap_excel_help_pnl") },
+                  { key: "mae", value: maeCol, setter: setMaeCol, required: false,
+                    label: t("bootstrap_excel_label_mae"), help: t("bootstrap_excel_help_mae") },
+                  { key: "mfe", value: mfeCol, setter: setMfeCol, required: false,
+                    label: t("bootstrap_excel_label_mfe"), help: t("bootstrap_excel_help_mfe") },
+                ].map(field => (
+                  <div key={field.key}>
+                    <label style={{ display: "block", fontFamily: "var(--plex)",
+                                    fontSize: 11.5, letterSpacing: 0.05,
+                                    color: field.required ? C.cinnabar : C.bone,
+                                    fontWeight: 600, marginBottom: 4,
+                                    textTransform: "uppercase" }}>
+                      {field.label}
+                      {!field.required && (
+                        <span style={{ marginLeft: 6, color: C.smoke, fontWeight: 400,
+                                       textTransform: "lowercase", fontStyle: "italic" }}>
+                          ({t("optional")})
+                        </span>
+                      )}
+                    </label>
+                    <select
+                      data-testid={`excel-col-${field.key}`}
+                      className="fg-select"
+                      value={field.value === null ? "" : String(field.value)}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        field.setter(v === "" ? null : Number(v));
+                      }}
+                      style={{ width: "100%", padding: "8px 10px", fontSize: 12 }}>
+                      <option value="">
+                        {field.required
+                          ? t("bootstrap_excel_select_placeholder")
+                          : t("bootstrap_excel_select_none")}
+                      </option>
+                      {excelData.headers.map((h, i) => (
+                        <option key={i} value={i}>
+                          {h
+                            ? String(h)
+                            : `${t("bootstrap_excel_column")} ${String.fromCharCode(65 + i)}`}
+                        </option>
+                      ))}
+                    </select>
+                    <div style={{ marginTop: 4, fontFamily: "var(--plex)",
+                                  fontSize: 11, fontStyle: "italic",
+                                  color: C.smoke, lineHeight: 1.5 }}>
+                      {field.help}
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
 
-          <button onClick={cancelExcelImport}
-                  data-testid="excel-cancel"
-                  style={{
-                    marginTop: 12, background: "transparent",
-                    color: C.smoke, border: `1px solid ${C.dust}`,
-                    padding: "6px 14px", fontSize: 11,
-                    fontFamily: "var(--mono)", letterSpacing: "0.08em",
-                    textTransform: "uppercase", cursor: "pointer",
-                  }}>
-            {t("bootstrap_excel_cancel")}
-          </button>
+              {/* Preview */}
+              <div style={{ fontFamily: "var(--plex)", fontSize: 11, letterSpacing: 0.18,
+                            textTransform: "uppercase", color: C.steel,
+                            fontWeight: 600, marginBottom: 6 }}>
+                § {t("bootstrap_excel_preview")}
+                <span style={{ marginLeft: 8, color: C.smoke,
+                               fontWeight: 400, textTransform: "lowercase",
+                               fontStyle: "italic" }}>
+                  ({Math.min(excelData.rows.length, 10)} {t("bootstrap_excel_first_rows")})
+                </span>
+              </div>
+              <div style={{ overflowX: "auto", maxWidth: "100%",
+                            border: `1px solid ${C.haze}` }}>
+                <table style={{
+                  borderCollapse: "collapse", fontFamily: "var(--mono)",
+                  fontSize: 11.5, minWidth: "100%",
+                }}>
+                  <thead>
+                    <tr>
+                      {excelData.headers.map((header, colIdx) => {
+                        const role = pnlCol === colIdx ? "pnl"
+                                   : maeCol === colIdx ? "mae"
+                                   : mfeCol === colIdx ? "mfe" : null;
+                        const roleColor = role === "pnl" ? C.cinnabar
+                                        : role === "mae" ? C.brass
+                                        : role === "mfe" ? "#7BC47F"
+                                        : C.smoke;
+                        return (
+                          <th key={colIdx} style={{
+                            padding: "8px 10px",
+                            borderRight: `1px solid ${C.haze}`,
+                            borderBottom: `1px solid ${C.haze}`,
+                            verticalAlign: "top", minWidth: 130,
+                            background: role ? `${roleColor}1A` : C.archive,
+                            textAlign: "left",
+                            color: role ? roleColor : C.bone,
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                          }}>
+                            {role && (
+                              <span style={{ fontSize: 9, letterSpacing: "0.12em",
+                                             marginRight: 6,
+                                             padding: "1px 5px",
+                                             border: `1px solid ${roleColor}`,
+                                             color: roleColor }}>
+                                {role.toUpperCase()}
+                              </span>
+                            )}
+                            {header
+                              ? String(header)
+                              : `${t("bootstrap_excel_column")} ${String.fromCharCode(65 + colIdx)}`}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {excelData.rows.map((row, rowIdx) => (
+                      <tr key={rowIdx}>
+                        {excelData.headers.map((_, colIdx) => {
+                          const role = pnlCol === colIdx ? "pnl"
+                                     : maeCol === colIdx ? "mae"
+                                     : mfeCol === colIdx ? "mfe" : null;
+                          const roleColor = role === "pnl" ? C.cinnabar
+                                          : role === "mae" ? C.brass
+                                          : role === "mfe" ? "#7BC47F"
+                                          : null;
+                          return (
+                            <td key={colIdx} style={{
+                              padding: "5px 10px",
+                              borderRight: `1px solid ${C.haze}`,
+                              borderBottom: `1px solid ${C.haze}`,
+                              color: role ? roleColor : C.linen,
+                              background: role ? `${roleColor}0D` : "transparent",
+                              whiteSpace: "nowrap",
+                            }}>
+                              {row[colIdx] !== null && row[colIdx] !== undefined && row[colIdx] !== ""
+                                ? String(row[colIdx])
+                                : "—"}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style={{ padding: "12px 18px", borderTop: `1px solid ${C.dust}`,
+                          display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={cancelExcelImport}
+                      data-testid="excel-cancel"
+                      className="fg-btn-ghost"
+                      style={{ padding: "8px 18px" }}>
+                {t("bootstrap_excel_cancel")}
+              </button>
+              <button
+                onClick={confirmColumnSelection}
+                disabled={pnlCol === null}
+                data-testid="excel-confirm"
+                style={{
+                  padding: "8px 18px",
+                  background: pnlCol === null ? C.dust : C.cinnabar,
+                  color: pnlCol === null ? C.smoke : C.bone,
+                  border: "none",
+                  fontFamily: "var(--mono)", fontSize: 11,
+                  letterSpacing: "0.12em", textTransform: "uppercase",
+                  fontWeight: 600,
+                  cursor: pnlCol === null ? "not-allowed" : "pointer",
+                }}>
+                {t("bootstrap_excel_confirm")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
