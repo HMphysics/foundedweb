@@ -20,7 +20,6 @@ export default function StrategyTab({
   presetPlan, selectPlan, updateDraft, updatePhase2,
   nSims, setNSims, loading, handleRun,
   compareSlots, addToCompare, removeFromCompare, clearCompare, runAllCompare, compareLoading,
-  setShowCsvModal,
   setActiveTab,
 }) {
   const { t } = useT();
@@ -79,8 +78,7 @@ export default function StrategyTab({
                 </div>
                 <div>{t("quick_start_body")}</div>
               </div>
-              <PnLDistributionSection strategy={strategy} setStrategy={setStrategy}
-                                      openCsv={() => setShowCsvModal(true)} />
+              <PnLDistributionSection strategy={strategy} setStrategy={setStrategy} />
               <IntradayRiskSection strategy={strategy} setStrategy={setStrategy} />
               <PaywallGate feature="commissions">
                 <CostsSection strategy={strategy} setStrategy={setStrategy} />

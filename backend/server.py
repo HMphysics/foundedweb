@@ -31,7 +31,7 @@ api_router = APIRouter(prefix="/api")
 # Plan features definition
 PLAN_FEATURES = {
     "free": {
-        "firms_allowed": ["apex_eod", "topstep", "ftmo"],
+        "firms_allowed": ["topstep", "phidias_fundamental", "fundingpips"],
         "modes": ["simple", "bootstrap"],
         "compare": False,
         "export": False,

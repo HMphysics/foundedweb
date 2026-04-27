@@ -8,7 +8,7 @@ const FREE_DEFAULT = {
   plan: 'free',
   status: 'active',
   features: {
-    firms_allowed: ['apex_eod', 'topstep', 'ftmo'],
+    firms_allowed: ['topstep', 'phidias_fundamental', 'fundingpips'],
     modes: ['simple', 'bootstrap'],
     compare: false,
     export: false,
