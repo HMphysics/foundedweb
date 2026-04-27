@@ -9,7 +9,6 @@ import { downloadJSON, exportPNG as exportPNGHelper } from "./lib/export";
 import { LangProvider, useT } from "./components/LangContext";
 import { AuthProvider, useAuth } from "./components/AuthContext";
 import { UserPlanProvider } from "./components/UserPlanContext";
-import CsvModal from "./components/CsvModal";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import ChamberTab from "./components/chamber/ChamberTab";
@@ -83,7 +82,6 @@ function AppInner() {
   const [showAccountEditor, setShowAccountEditor] = useState(false);
   const [compareSlots, setCompareSlots] = useState([]);
   const [compareLoading, setCompareLoading] = useState(false);
-  const [showCsvModal, setShowCsvModal] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(true);
   const [stripeBanner, setStripeBanner] = useState(null); // { type: 'success' | 'cancel', message: string }
 
@@ -220,11 +218,6 @@ function AppInner() {
     }, 30);
   };
 
-  const applyCalibration = (strategyPatch) => {
-    setStrategy(prev => ({ ...prev, ...strategyPatch }));
-    setShowCsvModal(false);
-  };
-
   // ─── Export handlers ───
   const exportJSON = () => {
     if (!results) return;
@@ -296,7 +289,6 @@ function AppInner() {
           compareSlots={compareSlots} addToCompare={addToCompare}
           removeFromCompare={removeFromCompare} clearCompare={clearCompare}
           runAllCompare={runAllCompare} compareLoading={compareLoading}
-          setShowCsvModal={setShowCsvModal}
           setActiveTab={setActiveTab}
         />
       )}
@@ -328,7 +320,6 @@ function AppInner() {
       )}
 
       <Footer />
-      {showCsvModal && <CsvModal onClose={() => setShowCsvModal(false)} onApply={applyCalibration} />}
     </div>
   );
 }

@@ -405,6 +405,8 @@ export const TRANSLATIONS = {
 
     // Section descriptions (italic gray, shown under each collapsible title)
     section_pnl_desc: "Los datos de tu backtest · win rate, P&L de días ganadores y perdedores · base del cálculo",
+    simple_info_title: "¿Cuándo usar este modo?",
+    simple_info_body: "Si todavía no has hecho trading real ni tienes un historial de P&L diarios. Por ejemplo, si estás probando una idea sobre el papel y solo tienes números teóricos: 'creo que mi win rate sería del 40% y mis ganadores serían el doble que mis perdedores'.\n\nEste modo se inventa días simulados a partir de esos números, asumiendo que siguen una campana de Gauss. Es una aproximación rápida pero menos fiable que el modo Data, que usa tus números literales sin inventarse nada.\n\nSi tienes al menos 30 días de trading real, usa el modo Data. Es más honesto.",
     section_mae_desc: "Máxima pérdida intradía antes del cierre · clave para drawdowns trailing-intraday",
     section_costs_desc: "Comisiones que erosionan tu P&L neto · ignóralo si tus datos ya son netos",
     section_behavioral_desc: "Qué cuentas como día válido y cómo cuentas los días máximos",
@@ -666,7 +668,7 @@ export const TRANSLATIONS = {
     landing_price_forever: "Para siempre",
     landing_price_monthly: "/mes",
     landing_price_one_time: "Pago único",
-    landing_free_feat_1: "3 firmas populares (Apex, Topstep, FTMO)",
+    landing_free_feat_1: "3 firmas (Topstep, Phidias, FundingPips)",
     landing_free_feat_2: "Modo data y modo summary stats",
     landing_free_feat_3: "Resultados básicos: P(PASS), EV",
     landing_free_cta: "Empezar gratis",
@@ -1084,6 +1086,8 @@ export const TRANSLATIONS = {
 
     // Section descriptions (italic gray, shown under each collapsible title)
     section_pnl_desc: "Your backtest data · win rate, P&L on winning and losing days · the base of every calculation",
+    simple_info_title: "When to use this mode?",
+    simple_info_body: "If you haven't done real trading yet and don't have a daily P&L history. For example, if you're testing an idea on paper and only have theoretical numbers: 'I think my win rate would be 40% and my winners would be twice my losers.'\n\nThis mode generates simulated days from those numbers, assuming they follow a normal distribution. It's a quick approximation but less reliable than Data mode, which uses your literal numbers without making things up.\n\nIf you have at least 30 days of real trading, use Data mode. It's more honest.",
     section_mae_desc: "Max intraday loss before close · critical for trailing-intraday drawdowns",
     section_costs_desc: "Commissions that erode net P&L · skip it if your data is already net",
     section_behavioral_desc: "What counts as a valid day and how max-days are counted",
@@ -1338,7 +1342,7 @@ export const TRANSLATIONS = {
     landing_price_forever: "Forever",
     landing_price_monthly: "/month",
     landing_price_one_time: "One-time",
-    landing_free_feat_1: "3 popular firms (Apex, Topstep, FTMO)",
+    landing_free_feat_1: "3 firms (Topstep, Phidias, FundingPips)",
     landing_free_feat_2: "Data mode and summary stats mode",
     landing_free_feat_3: "Basic results: P(PASS), EV",
     landing_free_cta: "Start free",

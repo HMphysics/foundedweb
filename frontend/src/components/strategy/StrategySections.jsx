@@ -83,7 +83,7 @@ export function ModeSelector({ strategy, setStrategy }) {
   );
 }
 
-export function PnLDistributionSection({ strategy, setStrategy, openCsv }) {
+export function PnLDistributionSection({ strategy, setStrategy }) {
   const { t } = useT();
   const mode = strategy.mode || "bootstrap";
   return (
@@ -91,10 +91,24 @@ export function PnLDistributionSection({ strategy, setStrategy, openCsv }) {
                  defaultOpen description={t("section_pnl_desc")}>
       {mode === "simple" ? (
         <>
-          <button className="fg-btn-ghost" onClick={openCsv}
-                  data-testid="btn-open-csv" style={{ width: "100%", marginBottom: 12 }}>
-            {t("calibrate_cta")}
-          </button>
+          <div data-testid="simple-info-panel"
+               style={{
+                 padding: "12px 14px",
+                 marginBottom: 14,
+                 border: `1px dashed ${C.brass}`,
+                 background: `${C.brass}0A`,
+                 fontFamily: "var(--plex)", fontSize: 12.5, lineHeight: 1.55,
+                 color: C.linen,
+               }}>
+            <div style={{ color: C.brass, fontWeight: 600, fontSize: 10.5,
+                          letterSpacing: 0.18, textTransform: "uppercase",
+                          marginBottom: 6 }}>
+              ★ {t("simple_info_title")}
+            </div>
+            <div style={{ whiteSpace: "pre-line" }}>
+              {t("simple_info_body")}
+            </div>
+          </div>
           <NumField label={t("field_wr")} value={strategy.wr} step={0.01} tip="wr"
                     onChange={v => setStrategy({ ...strategy, wr: v })} testId="strat-wr" />
           <NumField label={t("field_mu_win")} prefix="$" value={strategy.muWin} tip="mu_sigma"
